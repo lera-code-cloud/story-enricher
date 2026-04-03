@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Story Enricher</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #121212; color: #e8e0d8; min-height: 100vh; }
+
+  header {
+    background: #1a1a1a;
+    border-bottom: 0.5px solid #2e2e2e;
+    padding: 18px 40px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .header-left { display: flex; align-items: center; gap: 14px; }
+  .logo { width: 32px; height: 32px; background: #e8e0d8; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+  .logo svg { width: 16px; height: 16px; }
+  header h1 { font-size: 15px; font-weight: 500; color: #e8e0d8; letter-spacing: .02em; }
+  header span { font-size: 13px; color: #6b6560; }
+
+  .settings-btn {
+    background: none; border: 0.5px solid #2e2e2e; border-radius: 8px;
+    padding: 7px 16px; font-size: 12px; font-family: inherit;
+    color: #6b6560; cursor: pointer; letter-spacing: .04em;
+    transition: border-color .2s, color .2s;
+  }
+  .settings-btn:hover { border-color: #c8b89a; color: #e8e0d8; }
+  .settings-btn.active { border-color: #c8b89a; color: #c8b89a; }
+
+  .container { max-width: 820px; margin: 48px auto; padding: 0 28px; }
+
+  .prompt-editor {
+    display: none;
+    background: #1a1a1a;
+    border: 0.5px solid #2e2e2e;
+    border-radius: 16px;
+    padding: 28px 32px;
+    margin-bottom: 24px;
+  }
+  .prompt-editor.open { display: block; }
+
+  .editor-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .editor-header label { font-size: 11px; font-weight: 500; color: #6b6560; text-transform: uppercase; letter-spacing: .08em; }
+  .editor-actions { display: flex; gap: 8px; }
+
+  .pill-btn {
+    background: none; border: 0.5px solid #2e2e2e; border-radius: 8px;
+    padding: 6px 14px; font-size: 12px; font-family: inherit;
+    color: #9a8f85; cursor: pointer; transition: all .2s;
+  }
+  .pill-btn:hover { border-color: #c8b89a; color: #e8e0d8; }
+  .pill-btn.save { background: #e8e0d8; color: #121212; border-color: #e8e0d8; }
+  .pill-btn.save:hover { background: #fff; border-color: #fff; color: #121212; }
+
+  #promptEditor {
+    width: 100%; background: #111; border: 0.5px solid #2e2e2e;
+    border-radius: 10px; padding: 16px; font-size: 13px;
+    font-family: 'SF Mono', 'Fira Code', monospace; color: #c8b89a;
+    resize: vertical; min-height: 260px; outline: none;
+    transition: border-color .2s; line-height: 1.6;
+  }
+  #promptEditor:focus { border-color: #c8b89a; }
+
+  .saved-badge {
+    font-size: 12px; color: #6b9a7a; opacity: 0;
+    transition: opacity .3s; margin-left: 8px;
+  }
+  .saved-badge.show { opacity: 1; }
+
+  .input-card { background: #1a1a1a; border: 0.5px solid #2e2e2e; border-radius: 16px; padding: 28px 32px; margin-bottom: 24px; }
+  .input-card label { display: block; font-size: 11px; font-weight: 500; color: #6b6560; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 12px; }
+
+  textarea#inputText {
+    width: 100%; background: #111; border: 0.5px solid #2e2e2e;
+    border-radius: 10px; padding: 16px; font-size: 15px;
+    font-family: inherit; color: #e8e0d8; resize: vertical;
+    min-height: 140px; outline: none; transition: border-color .2s; line-height: 1.6;
+  }
+  textarea#inputText::placeholder { color: #4a4540; }
+  textarea#inputText:focus { border-color: #c8b89a; }
+
+  .btn-row { display: flex; align-items: center; gap: 12px; margin-top: 16px; }
+
+  button#submitBtn {
+    background: #e8e0d8; color: #121212; border: none;
+    border-radius: 10px; padding: 13px 28px; font-size: 14px;
+    font-weight: 500; cursor: pointer; transition: background .2s, opacity .2s;
+    letter-spacing: .01em;
+  }
+  button#submitBtn:hover { background: #fff; }
+  button#submitBtn:disabled { opacity: .35; cursor: not-allowed; }
+
+  #status { font-size: 13px; color: #6b6560; }
+  .dot { display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: #c8b89a; margin: 0 2px; animation: pulse .9s infinite alternate; }
+  .dot:nth-child(2) { animation-delay: .3s; }
+  .dot:nth-child(3) { animation-delay: .6s; }
+  @keyframes pulse { from { opacity: .2; } to { opacity: 1; } }
+
+  #output { display: none; }
+  .result-card { background: #1a1a1a; border: 0.5px solid #2e2e2e; border-radius: 16px; padding: 36px 40px; }
+  .result-toolbar { display: flex; justify-content: flex-end; margin-bottom: 24px; gap: 10px; }
+  .tool-btn { background: none; border: 0.5px solid #2e2e2e; border-radius: 8px; padding: 7px 16px; font-size: 12px; font-family: inherit; color: #9a8f85; cursor: pointer; transition: border-color .2s, color .2s; letter-spacing: .02em; }
+  .tool-btn:hover { border-color: #c8b89a; color: #e8e0d8; }
+
+  .result-body { font-size: 15px; line-height: 1.8; color: #d4ccc4; }
+  .result-body .block { margin-bottom: 28px; }
+  .result-body .block-title { font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: #6b6560; font-weight: 500; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 0.5px solid #2e2e2e; }
+  .result-body p { margin-bottom: 10px; }
+  .result-body strong { color: #e8e0d8; font-weight: 500; }
+  .result-body a { color: #c8b89a; text-decoration: none; border-bottom: 0.5px solid #c8b89a44; transition: border-color .2s; }
+  .result-body a:hover { border-color: #c8b89a; }
+  .result-body em { color: #9a8f85; font-style: normal; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="logo">
+      <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="8" cy="8" r="2" fill="#121212"/>
+        <path d="M8 2v2M8 12v2M2 8h2M12 8h2" stroke="#121212" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <h1>story enricher</h1>
+    <span>/ digital media</span>
+  </div>
+  <button class="settings-btn" id="settingsToggle" onclick="toggleEditor()">Prompt editor</button>
+</header>
+
+<div class="container">
+
+  <div class="prompt-editor" id="promptEditor-wrap">
+    <div class="editor-header">
+      <label>System prompt <span class="saved-badge" id="savedBadge">Saved</span></label>
+      <div class="editor-actions">
+        <button class="pill-btn" onclick="resetPrompt()">Reset to default</button>
+        <button class="pill-btn save" onclick="savePrompt()">Save</button>
+      </div>
+    </div>
+    <textarea id="promptEditor"></textarea>
+  </div>
+
+  <div class="input-card">
+    <label>Input — article, URL, or photo links</label>
+    <textarea id="inputText" placeholder="Paste article text, a short description, a URL, or a list of photo links…"></textarea>
+    <div class="btn-row">
+      <button id="submitBtn" onclick="runResearch()">Generate</button>
+      <div id="status"></div>
+    </div>
+  </div>
+
+  <div id="output">
+    <div class="result-card">
+      <div class="result-toolbar">
+        <button class="tool-btn" onclick="copyResult()">Copy</button>
+        <button class="tool-btn" onclick="resetTool()">New</button>
+      </div>
+      <div class="result-body" id="resultContent"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+
+
+const DEFAULT_PROMPT = `You are a research assistant for a digital media team. Your job is to suggest additional sources and ideas that can enrich a primary news article — not to summarize or repeat what the researcher already provided.
+When a researcher gives you a news article (as text, a short description, or a URL), do NOT repeat, rephrase, or summarize the information from their input. Treat everything they shared as already known. Your only job is to suggest what is MISSING — new angles, external sources, additional context, and comparable cases they have not mentioned — so they can build a fuller article.
+Respond with the following structure — always in English:
+---
+**📌 Story summary**
+2–3 sentences capturing the core of the story.
+---
+**🔍 Background & related themes**
+3–4 points covering broader context a reader needs to understand this story. Include relevant concepts, ongoing trends, or systemic issues connected to the topic.
+---
+**🔁 Similar cases & precedents**
+3–4 real-world examples of similar situations — from recent news or history. For each, briefly explain what happened and why it's comparable to this story.
+---
+**🕰 Timeline**
+4–6 chronological events showing how this situation developed. Start from the earliest relevant moment and lead up to the current story.
+---
+**💡 Storytelling angles**
+2–3 ideas for how this story could be framed to make it more engaging — a human angle, an unexpected detail, a contrast, a question the audience is already asking.
+---
+**👗 Celebrity appearance & style intelligence** *(include only when the story involves a celebrity's looks, outfit, beauty, or body)*
+
+Apply whichever of the following sub-sections are relevant to the story:
+
+- **Style history & reactions** — Find past moments when this celebrity was praised or criticized for their style or appearance. Note any previous outfits, looks, or aesthetic choices that are comparable to the current story.
+
+- **Plastic surgery & procedures** — If the topic involves physical changes, search for: (a) any statements the celebrity has made about cosmetic procedures, and (b) expert opinions (surgeons, dermatologists) on whether procedures appear to have been done. Cite sources for both.
+
+- **Fashion details** — Identify the exact brand(s), designer(s), and specific model or collection of each piece the celebrity is actually wearing in this appearance (clothing, shoes, bag, jewelry, etc.). Look up the stylist credited for this look. Include real retail or resale prices for the specific items worn. Note whether each piece is from a current collection, a past season, or custom-made. Do not list generic brand associations — only what is directly tied to this specific outfit.
+
+- **Who wore it / wore it similarly** — Search for other celebrities or public figures who previously appeared in the same or a visually similar outfit, makeup look, hairstyle, or accessories. Note any meaningful comparisons (same event type, same era, same designer).
+
+- **Photo set analysis** *(use when the input is a list of photo URLs with no accompanying text)* — Analyze the visual content of the provided photos and identify: the occasion or context, key style elements, any notable details (jewelry, makeup, body language, setting), and interesting facts or comparisons that could serve as editorial captions or story hooks.
+
+---
+Rules:
+- Always respond in English regardless of the language of the input.
+- Be specific and factual. No vague filler.
+- If a URL is provided, use it as context and work with what you know about the topic.
+- Keep each point concise — 1–2 sentences per item.
+- Do not add commentary outside this structure.
+- Every single fact, death, date, case, event, or statistic MUST have a source attached. No exceptions. Format: Source: [Publication name](URL). If you know the outlet but not the exact URL, write: Source: Publication name. Only omit the source tag if the information is truly general knowledge with zero traceable reporting. If you are listing multiple people or events in one section, each individual item must have its own source on the same line.
+- Never ask clarifying questions. Always respond immediately with the full structure.
+- If the news is recent and beyond your knowledge cutoff, still provide the full structure using everything you know about the topic, person, or theme. Never refuse or ask for more information.
+- The Celebrity appearance & style intelligence section is optional and should only appear when the story is clearly about a celebrity's looks, outfit, styling, beauty routine, body, or cosmetic procedures. Skip it entirely for political, business, or non-appearance-related stories.
+- Within the Celebrity appearance & style intelligence section, include only the sub-sections that are directly relevant. Do not force sub-sections that don't apply to the story.`;
+
+let currentPrompt = localStorage.getItem('storyEnricherPrompt') || DEFAULT_PROMPT;
+document.getElementById('promptEditor').value = currentPrompt;
+
+function toggleEditor() {
+  const wrap = document.getElementById('promptEditor-wrap');
+  const btn = document.getElementById('settingsToggle');
+  const isOpen = wrap.classList.toggle('open');
+  btn.classList.toggle('active', isOpen);
+}
+
+function savePrompt() {
+  currentPrompt = document.getElementById('promptEditor').value;
+  localStorage.setItem('storyEnricherPrompt', currentPrompt);
+  const badge = document.getElementById('savedBadge');
+  badge.classList.add('show');
+  setTimeout(() => badge.classList.remove('show'), 2000);
+}
+
+function resetPrompt() {
+  document.getElementById('promptEditor').value = DEFAULT_PROMPT;
+  currentPrompt = DEFAULT_PROMPT;
+  localStorage.setItem('storyEnricherPrompt', DEFAULT_PROMPT);
+  const badge = document.getElementById('savedBadge');
+  badge.classList.add('show');
+  setTimeout(() => badge.classList.remove('show'), 2000);
+}
+
+async function runResearch() {
+  const input = document.getElementById('inputText').value.trim();
+  if (!input) return;
+
+  const btn = document.getElementById('submitBtn');
+  const status = document.getElementById('status');
+  const output = document.getElementById('output');
+
+  btn.disabled = true;
+  output.style.display = 'none';
+  status.innerHTML = '<span class="dot"></span><span class="dot"></span><span class="dot"></span>';
+
+  try {
+    const res = await fetch("/api/chat", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: "claude-opus-4-6",
+        max_tokens: 4000,
+        system: currentPrompt,
+        messages: [{ role: "user", content: input }]
+      })
+    });
+
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+
+    const text = data.content[0].text;
+    document.getElementById('resultContent').innerHTML = renderContent(text);
+    output.style.display = 'block';
+    status.innerHTML = '';
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (err) {
+    status.innerHTML = `<span style="color:#c87070">Error: ${err.message}</span>`;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function renderContent(text) {
+  const sections = text.split(/\n---\n/);
+  return sections.map(sec => {
+    sec = sec.trim();
+    if (!sec) return '';
+    const lines = sec.split('\n');
+    let title = '', body = [];
+    if (lines[0].startsWith('**') && lines[0].endsWith('**')) {
+      title = lines[0].replace(/\*\*/g,'').replace(/\*/g,'').trim();
+      body = lines.slice(1);
+    } else {
+      body = lines;
+    }
+    const html = body.join('\n')
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+      .replace(/\*(.+?)\*/g,'<em>$1</em>')
+      .replace(/\[([^\]]+)\]\((https?[^\)]+)\)/g,'<a href="$2" target="_blank">$1</a>')
+      .replace(/\n/g,'<br>');
+    return `<div class="block">${title ? `<div class="block-title">${title}</div>` : ''}<p>${html}</p></div>`;
+  }).join('');
+}
+
+function copyResult() {
+  const text = document.getElementById('resultContent').innerText;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.querySelectorAll('.tool-btn')[0];
+    btn.textContent = 'Copied';
+    setTimeout(() => btn.textContent = 'Copy', 2000);
+  });
+}
+
+function resetTool() {
+  document.getElementById('inputText').value = '';
+  document.getElementById('output').style.display = 'none';
+  document.getElementById('status').innerHTML = '';
+  document.getElementById('inputText').focus();
+}
+
+document.getElementById('inputText').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) runResearch();
+});
+</script>
+</body>
+</html>
