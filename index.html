@@ -211,12 +211,50 @@ Apply whichever of the following sub-sections are relevant to the story:
 
 ---
 **📚 Approved sources only**
-You have access to a web_search tool that is technically restricted to a fixed list of approved outlets (legal records, national wire services, entertainment trade press, tabloids, fashion glossies, local US outlets, state flagship papers, background/verification databases, photo agencies, and verified official social accounts). You cannot search or retrieve anything outside this list — it is enforced at the tool level.
+You have access to a web_search tool. It is NOT technically restricted by domain — your search results may include outlets outside the approved list below. You must manually discard any result that isn't from an approved outlet, even if it's the top or only result returned.
 
-- For every factual claim (dates, deaths, cases, quotes, statistics, style/fashion facts, comparisons), actually call web_search before stating it. Do not rely on memory alone for anything specific or checkable.
-- If web_search returns nothing relevant for a claim, omit that claim entirely rather than fall back on unsearched knowledge.
+Approved outlets:
+
+Legal & primary records: PACER, CourtListener, Justia, UniCourt, judyrecords, Law & Crime, Court TV, The Marshall Project, Oxygen, Investigation Discovery
+
+Podcasts / interviews: Apple Podcasts, Spotify Podcasts, IMDb
+
+National wire & major news: Reuters, The New York Times, The Washington Post, The Wall Street Journal, USA Today, NPR, PBS NewsHour, CNN, NBC News, ABC News, CBS News, Fox News, BBC, The Guardian, The Independent, Newsweek, Time, Politico, Axios, The Hill, Los Angeles Times, Chicago Tribune, Forbes Entertainment, CNBC Media
+
+Entertainment trade publications: The Hollywood Reporter, Variety, Deadline, The Wrap, IndieWire, Billboard, WWD
+
+Celebrity/entertainment news: People, US Weekly, Entertainment Tonight, E! News, TMZ, Extra, Access Hollywood, Parade, Yahoo Entertainment, Vanity Fair, Vulture, New York Magazine, Entertainment Weekly, Business Insider, Daily Beast, BuzzFeed News archive, Vice
+
+Tabloid / gossip: Daily Mail, Page Six, NY Post, CloserWeekly, The Blast, HollywoodLife
+
+UK / international tabloid: The Sun (UK), The U.S. Sun, Daily Mirror, Metro UK, Heat World, Grazia
+
+Fashion & lifestyle glossies: Vogue, GQ, Esquire, Marie Claire, Elle, Harper's Bazaar, InStyle, Glamour, Cosmopolitan, Allure, Interview, Rolling Stone, W Magazine, Town & Country, The Cut, PopSugar, Refinery29, Essence, Bustle, The Face, i-D, Highsnobiety, The Daily Front Row, Complex, XXL, HipHopDX
+
+Local USA: KTLA 5, ABC7/KABC-TV, NBC4/KNBC, CBS News LA/KCAL, FOX 11/KTTV, NY1, ABC7NY/WABC, NBC New York/WNBC, CBS News New York, New York Daily News, amNewYork, Chicago Sun-Times, WGN9 Chicago, Miami Herald, WSVN 7 Miami, San Francisco Chronicle, KRON4 San Francisco, Atlanta Journal-Constitution, WSB-TV Atlanta, Las Vegas Review-Journal, Houston Chronicle, Dallas Morning News, Boston Globe, Philadelphia Inquirer, Seattle Times, Denver Post, ESPN, Sports Illustrated
+
+Broadcast morning shows: Today Show, Good Morning America, CBS Mornings
+
+British royal/celebrity glossies: Hello!, Daily Express, Daily Star (UK)
+
+Background/verification tools: Wikipedia (background only, must be corroborated elsewhere), Ancestry, FindAGrave, Legacy.com, Genius, Box Office Mojo
+
+Photo/video verification & licensing: Getty Images, AP Images, Backgrid, Shutterstock Editorial
+
+TV/soap/industry trade: TVLine, Soap Opera Digest, TV Guide
+
+Music trade: Pitchfork, Spin, NME
+
+State-level flagship outlet (one per US state, use for regional news matching that state):
+Alabama: AL.com; Alaska: Anchorage Daily News; Arizona: The Arizona Republic; Arkansas: Arkansas Democrat-Gazette; California: Los Angeles Times; Colorado: The Denver Post; Connecticut: Hartford Courant; Delaware: Delaware Online/The News Journal; Florida: Miami Herald; Georgia: The Atlanta Journal-Constitution; Hawaii: Honolulu Star-Advertiser; Idaho: Idaho Statesman; Illinois: Chicago Tribune; Indiana: The Indianapolis Star; Iowa: The Des Moines Register; Kansas: The Wichita Eagle; Kentucky: Louisville Courier-Journal; Louisiana: The Times-Picayune/NOLA.com, The Advocate; Maine: Portland Press Herald; Maryland: The Baltimore Sun; Massachusetts: The Boston Globe; Michigan: Detroit Free Press; Minnesota: Star Tribune; Mississippi: The Clarion-Ledger; Missouri: St. Louis Post-Dispatch; Montana: Billings Gazette; Nebraska: Omaha World-Herald; Nevada: Las Vegas Review-Journal; New Hampshire: New Hampshire Union Leader; New Jersey: NJ.com/The Star-Ledger; New Mexico: Albuquerque Journal; New York: New York Post (capital coverage: Times Union, Albany); North Carolina: The News & Observer; North Dakota: Bismarck Tribune; Ohio: Cleveland.com/The Plain Dealer; Oklahoma: The Oklahoman; Oregon: The Oregonian; Pennsylvania: The Philadelphia Inquirer; Rhode Island: The Providence Journal; South Carolina: The Post and Courier; South Dakota: Argus Leader; Tennessee: The Tennessean; Texas: Houston Chronicle; Utah: The Salt Lake Tribune; Vermont: Burlington Free Press; Virginia: Richmond Times-Dispatch; Washington: The Seattle Times; West Virginia: Charleston Gazette-Mail; Wisconsin: Milwaukee Journal Sentinel; Wyoming: Casper Star-Tribune; Washington, D.C.: The Washington Post
+
+Official verified social accounts (primary — celebrity's/rep's own words, for direct quotes only): Instagram, Threads, X (Twitter), TikTok, Facebook, YouTube — verified/official accounts only.
+
+- For every factual claim (dates, deaths, cases, quotes, statistics, style/fashion facts, comparisons), call web_search, then check whether the result comes from an approved outlet before using it.
+- If none of your search results for a claim come from an approved outlet, omit that claim entirely — do not cite the unapproved result, and do not fall back on unsearched memory.
 - Every cited fact must use the real URL and outlet name returned by web_search. Never write out a URL or publication name from memory.
-- If a URL is provided by the researcher as input, treat it only as context for what the story is about — still verify any new fact you add via web_search.
+- Note: any fact you cite from an outlet outside the approved list will be automatically stripped from your response before the researcher sees it — so citing an unapproved source is always wasted effort. Only cite approved outlets.
+- If a URL is provided by the researcher as input, treat it only as context for what the story is about — still verify any new fact you add via web_search against an approved outlet.
 
 ---
 Rules:
@@ -258,9 +296,31 @@ function resetPrompt() {
   setTimeout(() => badge.classList.remove('show'), 2000);
 }
 
-// Pull real citation URLs out of the API response so the UI can show a
-// verified sources list independent of whatever the model wrote inline.
-function extractCitations(content) {
+// Checks whether a URL's hostname matches (or is a subdomain of) one of
+// the approved domains. This is our real enforcement layer now that
+// allowed_domains can't be used at the API level.
+function isApprovedUrl(url) {
+  try {
+    const host = new URL(url).hostname.replace(/^www\./, '').toLowerCase();
+    return APPROVED_DOMAINS.some(d => host === d || host.endsWith('.' + d));
+  } catch {
+    return false;
+  }
+}
+
+// Walks the model's raw markdown line by line. Any line containing a
+// "Source:" attribution whose link points outside the approved domain
+// list gets dropped entirely, so an unapproved fact never reaches the UI
+// — regardless of what the model decided to cite.
+function filterUnapprovedSources(text) {
+  const linkPattern = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
+  return text.split('\n').filter(line => {
+    if (!/Source:/i.test(line)) return true; // non-source lines pass through
+    const links = [...line.matchAll(linkPattern)];
+    if (links.length === 0) return true; // "Source: Publication name" with no URL — let it through, nothing to check
+    return links.every(m => isApprovedUrl(m[2]));
+  }).join('\n');
+}
   const seen = new Map();
   (content || []).forEach(block => {
     if (block.type === "text" && Array.isArray(block.citations)) {
@@ -302,20 +362,30 @@ async function runResearch() {
         max_tokens: 4000,
         system: currentPrompt,
         messages: [{ role: "user", content: input }],
+        // NOTE: allowed_domains is intentionally NOT used here. Anthropic's
+        // web_search pre-validates that its crawler (Claude-SearchBot) can
+        // access every domain in allowed_domains via robots.txt — and most
+        // major outlets on our approved list (NYT, BBC, Daily Mail, People,
+        // Reuters, USA Today, Vogue, etc.) explicitly block AI crawlers.
+        // That makes allowed_domains fail with a 400 error before any
+        // search even runs. Instead: search is unrestricted, and every
+        // fact/source is filtered client-side against APPROVED_DOMAINS
+        // after the response comes back (see filterUnapprovedSources).
         tools: [{
           type: "web_search_20250305",
           name: "web_search",
-          max_uses: 12,
-          allowed_domains: APPROVED_DOMAINS
-        }]
+          max_uses: 12
+        }],
+        tool_choice: { type: "any" }
       })
     });
 
     const data = await res.json();
     if (data.error) throw new Error(data.error.message);
 
-    const text = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("");
-    const citations = extractCitations(data.content);
+    const rawText = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("");
+    const text = filterUnapprovedSources(rawText);
+    const citations = extractCitations(data.content).filter(([url]) => isApprovedUrl(url));
     const searchCount = countSearches(data.content);
 
     let citationsHtml = "";
