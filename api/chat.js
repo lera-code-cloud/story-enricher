@@ -7,9 +7,15 @@ export default async function handler(req, res) {
   const noSearch = req.headers['x-no-search'] === 'true';
   const body = { ...req.body };
 
-  if (!noSearch) {
+  if (noSearch) {
+    delete body.tools;
+    delete body.tool_choice;
+  } else if (!body.tools) {
+    // Fallback only if the client didn't specify its own tool config
     body.tools = [{ type: "web_search_20250305", name: "web_search" }];
   }
+  // If body.tools was already sent by the client (with allowed_domains,
+  // max_uses, etc.), we leave it untouched instead of overwriting it.
 
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
