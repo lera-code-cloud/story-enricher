@@ -64,7 +64,6 @@
   .result-body a { color: #c8b89a; text-decoration: none; border-bottom: 0.5px solid #c8b89a44; transition: border-color .2s; }
   .result-body a:hover { border-color: #c8b89a; }
   .result-body em { color: #9a8f85; font-style: normal; }
-  #searchLog { font-size: 12px; color: #6b6560; margin-top: 6px; }
 </style>
 </head>
 <body>
@@ -98,7 +97,6 @@
       <button id="submitBtn" onclick="runResearch()">Generate</button>
       <div id="status"></div>
     </div>
-    <div id="searchLog"></div>
   </div>
 
   <div id="output">
@@ -114,68 +112,6 @@
 </div>
 
 <script>
-// ---------------------------------------------------------------------------
-// Approved outlet domains — web_search is hard-restricted to this list via
-// the API's allowed_domains parameter. Claude cannot see or cite anything
-// outside these domains.
-// ---------------------------------------------------------------------------
-const APPROVED_DOMAINS = [
-  // Legal & primary records
-  "pacer.uscourts.gov","courtlistener.com","justia.com","unicourt.com","judyrecords.com",
-  "lawandcrime.com","courttv.com","themarshallproject.org","oxygen.com","investigationdiscovery.com",
-  // Podcasts / interviews
-  "podcasts.apple.com","open.spotify.com","imdb.com",
-  // National wire & major news
-  "reuters.com","nytimes.com","washingtonpost.com","wsj.com","usatoday.com","npr.org","pbs.org",
-  "cnn.com","nbcnews.com","abcnews.go.com","cbsnews.com","foxnews.com","bbc.com","theguardian.com",
-  "independent.co.uk","newsweek.com","time.com","politico.com","axios.com","thehill.com",
-  "latimes.com","chicagotribune.com","forbes.com","cnbc.com",
-  // Entertainment trade publications
-  "hollywoodreporter.com","variety.com","deadline.com","thewrap.com","indiewire.com","billboard.com","wwd.com",
-  // Celebrity/entertainment news
-  "people.com","usmagazine.com","etonline.com","eonline.com","tmz.com","extratv.com",
-  "accesshollywood.com","parade.com","yahoo.com","vanityfair.com","vulture.com","nymag.com",
-  "ew.com","businessinsider.com","thedailybeast.com","buzzfeednews.com","vice.com",
-  // Tabloid / gossip
-  "dailymail.co.uk","pagesix.com","nypost.com","closerweekly.com","theblast.com","hollywoodlife.com",
-  // UK / international tabloid
-  "thesun.co.uk","the-sun.com","mirror.co.uk","metro.co.uk","heatworld.com","graziadaily.co.uk",
-  // Fashion & lifestyle glossies
-  "vogue.com","gq.com","esquire.com","marieclaire.com","elle.com","harpersbazaar.com","instyle.com",
-  "glamour.com","cosmopolitan.com","allure.com","interviewmagazine.com","rollingstone.com",
-  "wmagazine.com","townandcountrymag.com","thecut.com","popsugar.com","refinery29.com",
-  "essence.com","bustle.com","theface.com","i-d.co","highsnobiety.com","thedailyfrontrow.com",
-  "complex.com","xxlmag.com","hiphopdx.com",
-  // Local USA
-  "ktla.com","abc7.com","nbclosangeles.com","foxla.com","ny1.com","abc7ny.com","nbcnewyork.com",
-  "nydailynews.com","amny.com","chicago.suntimes.com","wgntv.com","miamiherald.com","wsvn.com",
-  "sfchronicle.com","kron4.com","ajc.com","wsbtv.com","reviewjournal.com","houstonchronicle.com",
-  "dallasnews.com","bostonglobe.com","inquirer.com","seattletimes.com","denverpost.com","espn.com","si.com",
-  // Broadcast morning shows
-  "today.com","goodmorningamerica.com",
-  // British royal/celebrity glossies
-  "hellomagazine.com","express.co.uk","dailystar.co.uk",
-  // Background/verification tools
-  "wikipedia.org","ancestry.com","findagrave.com","legacy.com","genius.com","boxofficemojo.com",
-  // Photo/video verification & licensing
-  "gettyimages.com","apimages.com","backgrid.com","shutterstock.com",
-  // TV/soap/industry trade
-  "tvline.com","soapoperadigest.com","tvguide.com",
-  // Music trade
-  "pitchfork.com","spin.com","nme.com",
-  // State-level flagship outlets
-  "al.com","adn.com","azcentral.com","arkansasonline.com","courant.com","delawareonline.com",
-  "staradvertiser.com","idahostatesman.com","indystar.com","desmoinesregister.com","kansas.com",
-  "courier-journal.com","nola.com","theadvocate.com","pressherald.com","baltimoresun.com",
-  "freep.com","startribune.com","clarionledger.com","stltoday.com","billingsgazette.com",
-  "omaha.com","unionleader.com","nj.com","abqjournal.com","timesunion.com","newsobserver.com",
-  "bismarcktribune.com","cleveland.com","oklahoman.com","oregonlive.com","providencejournal.com",
-  "postandcourier.com","argusleader.com","tennessean.com","sltrib.com","burlingtonfreepress.com",
-  "richmond.com","wvgazettemail.com","jsonline.com","trib.com",
-  // Official verified social accounts (primary source for direct quotes)
-  "instagram.com","threads.net","x.com","twitter.com","tiktok.com","facebook.com","youtube.com"
-];
-
 const DEFAULT_PROMPT = `You are a research assistant for a digital media team. Your job is to suggest additional sources and ideas that can enrich a primary news article — not to summarize or repeat what the researcher already provided.
 When a researcher gives you a news article (as text, a short description, or a URL), do NOT repeat, rephrase, or summarize the information from their input. Treat everything they shared as already known. Your only job is to suggest what is MISSING — new angles, external sources, additional context, and comparable cases they have not mentioned — so they can build a fuller article.
 Respond with the following structure — always in English:
@@ -211,7 +147,7 @@ Apply whichever of the following sub-sections are relevant to the story:
 
 ---
 **📚 Approved sources only**
-You have access to a web_search tool. It is NOT technically restricted by domain — your search results may include outlets outside the approved list below. You must manually discard any result that isn't from an approved outlet, even if it's the top or only result returned.
+Every fact, date, death, case, event, quote, or statistic you cite MUST come from one of the outlets listed below. Do not cite, reference, or imply any outlet that is not on this list. If you cannot attribute a fact to one of these outlets, omit that fact entirely rather than guess, generalize, or substitute a different source.
 
 Approved outlets:
 
@@ -250,22 +186,18 @@ Alabama: AL.com; Alaska: Anchorage Daily News; Arizona: The Arizona Republic; Ar
 
 Official verified social accounts (primary — celebrity's/rep's own words, for direct quotes only): Instagram, Threads, X (Twitter), TikTok, Facebook, YouTube — verified/official accounts only.
 
-- For every factual claim (dates, deaths, cases, quotes, statistics, style/fashion facts, comparisons), call web_search, then check whether the result comes from an approved outlet before using it.
-- If none of your search results for a claim come from an approved outlet, omit that claim entirely — do not cite the unapproved result, and do not fall back on unsearched memory.
-- Every cited fact must use the real URL and outlet name returned by web_search. Never write out a URL or publication name from memory.
-- Note: any fact you cite from an outlet outside the approved list will be automatically stripped from your response before the researcher sees it — so citing an unapproved source is always wasted effort. Only cite approved outlets.
-- If a URL is provided by the researcher as input, treat it only as context for what the story is about — still verify any new fact you add via web_search against an approved outlet.
-
 ---
 Rules:
 - Always respond in English regardless of the language of the input.
 - Be specific and factual. No vague filler.
+- If a URL is provided, use it as context and work with what you know about the topic.
 - Keep each point concise — 1–2 sentences per item.
 - Do not add commentary outside this structure.
-- Every single fact, death, date, case, event, or statistic MUST have a source attached, in the format: Source: [Publication name](URL). If listing multiple people or events in one section, each item must have its own source on the same line.
-- Never cite, invent, or imply an outlet that you did not actually retrieve via web_search. If no approved outlet covers a fact, omit that fact entirely rather than substitute an unlisted source or fabricate one.
+- Every single fact, death, date, case, event, or statistic MUST have a source attached, and that source must be one of the approved outlets listed above. No exceptions. Format: Source: [Publication name](URL). If you know the outlet but not the exact URL, write: Source: Publication name. Only omit the source tag if the information is truly general knowledge with zero traceable reporting. If you are listing multiple people or events in one section, each individual item must have its own source on the same line.
+- Never cite, invent, or imply an outlet that is not on the approved list above. If no approved outlet covers a fact, omit that fact entirely rather than fabricate or substitute a different outlet.
+- Completing the full structure is mandatory. If you are running long, shorten the Background, Similar cases, or Celebrity sub-sections rather than skipping or truncating the Timeline or Storytelling angles sections — every section listed in the structure must appear in every response.
 - Never ask clarifying questions. Always respond immediately with the full structure.
-- If the news is recent and beyond your training knowledge, use web_search to find what the approved outlets have published about it. Never refuse or ask for more information.
+- If the news is recent and beyond your knowledge cutoff, still provide the full structure using everything you know about the topic, person, or theme, sourced only from the approved list. Never refuse or ask for more information.
 - The Celebrity appearance & style intelligence section is optional and should only appear when the story is clearly about a celebrity's looks, outfit, styling, beauty routine, body, or cosmetic procedures. Skip it entirely for political, business, or non-appearance-related stories.
 - Within the Celebrity appearance & style intelligence section, include only the sub-sections that are directly relevant. Do not force sub-sections that don't apply to the story.`;
 
@@ -296,53 +228,6 @@ function resetPrompt() {
   setTimeout(() => badge.classList.remove('show'), 2000);
 }
 
-// Checks whether a URL's hostname matches (or is a subdomain of) one of
-// the approved domains. This is our real enforcement layer now that
-// allowed_domains can't be used at the API level.
-function isApprovedUrl(url) {
-  try {
-    const host = new URL(url).hostname.replace(/^www\./, '').toLowerCase();
-    return APPROVED_DOMAINS.some(d => host === d || host.endsWith('.' + d));
-  } catch {
-    return false;
-  }
-}
-
-// Walks the model's raw markdown line by line. Any line containing a
-// "Source:" attribution whose link points outside the approved domain
-// list gets dropped entirely, so an unapproved fact never reaches the UI
-// — regardless of what the model decided to cite.
-function filterUnapprovedSources(text) {
-  const linkPattern = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
-  return text.split('\n').filter(line => {
-    if (!/Source:/i.test(line)) return true; // non-source lines pass through
-    const links = [...line.matchAll(linkPattern)];
-    if (links.length === 0) return true; // "Source: Publication name" with no URL — let it through, nothing to check
-    return links.every(m => isApprovedUrl(m[2]));
-  }).join('\n');
-}
-
-// Pull real citation URLs out of the API response so the UI can show a
-// verified sources list independent of whatever the model wrote inline.
-function extractCitations(content) {
-  const seen = new Map();
-  (content || []).forEach(block => {
-    if (block.type === "text" && Array.isArray(block.citations)) {
-      block.citations.forEach(c => {
-        if (c.url && !seen.has(c.url)) {
-          seen.set(c.url, c.title || c.url);
-        }
-      });
-    }
-  });
-  return [...seen.entries()];
-}
-
-// Count how many actual searches were run, for a small transparency line.
-function countSearches(content) {
-  return (content || []).filter(b => b.type === "server_tool_use" && b.name === "web_search").length;
-}
-
 async function runResearch() {
   const input = document.getElementById('inputText').value.trim();
   if (!input) return;
@@ -350,11 +235,9 @@ async function runResearch() {
   const btn = document.getElementById('submitBtn');
   const status = document.getElementById('status');
   const output = document.getElementById('output');
-  const searchLog = document.getElementById('searchLog');
 
   btn.disabled = true;
   output.style.display = 'none';
-  searchLog.textContent = '';
   status.innerHTML = '<span class="dot"></span><span class="dot"></span><span class="dot"></span>';
 
   try {
@@ -365,46 +248,17 @@ async function runResearch() {
         model: "claude-opus-4-6",
         max_tokens: 4000,
         system: currentPrompt,
-        messages: [{ role: "user", content: input }],
-        // NOTE: allowed_domains is intentionally NOT used here. Anthropic's
-        // web_search pre-validates that its crawler (Claude-SearchBot) can
-        // access every domain in allowed_domains via robots.txt — and most
-        // major outlets on our approved list (NYT, BBC, Daily Mail, People,
-        // Reuters, USA Today, Vogue, etc.) explicitly block AI crawlers.
-        // That makes allowed_domains fail with a 400 error before any
-        // search even runs. Instead: search is unrestricted, and every
-        // fact/source is filtered client-side against APPROVED_DOMAINS
-        // after the response comes back (see filterUnapprovedSources).
-        tools: [{
-          type: "web_search_20250305",
-          name: "web_search",
-          max_uses: 12
-        }],
-        tool_choice: { type: "any" }
+        messages: [{ role: "user", content: input }]
       })
     });
 
     const data = await res.json();
     if (data.error) throw new Error(data.error.message);
 
-    const rawText = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("");
-    const text = filterUnapprovedSources(rawText);
-    const citations = extractCitations(data.content).filter(([url]) => isApprovedUrl(url));
-    const searchCount = countSearches(data.content);
-
-    let citationsHtml = "";
-    if (citations.length) {
-      citationsHtml = `<div class="block"><div class="block-title">Verified sources used</div><p>` +
-        citations.map(([url, title]) => `<a href="${url}" target="_blank">${title}</a>`).join("<br>") +
-        `</p></div>`;
-    }
-
-    document.getElementById('resultContent').innerHTML = renderContent(text) + citationsHtml;
+    const text = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("");
+    document.getElementById('resultContent').innerHTML = renderContent(text);
     output.style.display = 'block';
     status.innerHTML = '';
-    searchLog.textContent = searchCount
-      ? `${searchCount} search${searchCount === 1 ? '' : 'es'} run across approved outlets · ${citations.length} sources returned`
-      : 'No web searches were triggered for this input';
     output.scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch (err) {
     status.innerHTML = `<span style="color:#c87070">Error: ${err.message}</span>`;
@@ -449,7 +303,6 @@ function resetTool() {
   document.getElementById('inputText').value = '';
   document.getElementById('output').style.display = 'none';
   document.getElementById('status').innerHTML = '';
-  document.getElementById('searchLog').textContent = '';
   document.getElementById('inputText').focus();
 }
 
