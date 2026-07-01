@@ -321,6 +321,10 @@ function filterUnapprovedSources(text) {
     return links.every(m => isApprovedUrl(m[2]));
   }).join('\n');
 }
+
+// Pull real citation URLs out of the API response so the UI can show a
+// verified sources list independent of whatever the model wrote inline.
+function extractCitations(content) {
   const seen = new Map();
   (content || []).forEach(block => {
     if (block.type === "text" && Array.isArray(block.citations)) {
