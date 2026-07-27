@@ -1,33 +1,52 @@
+// Vercel serverless proxy to the Anthropic API.
+// The API key AND the Amo ES MCP url stay on the server — never in the browser.
+//
+// Required Environment Variables (Vercel → Settings → Environment Variables):
+//   ANTHROPIC_API_KEY  — your Anthropic key
+//   AMO_ES_MCP_URL     — https://amo-es-mcp-prod.amomama.xyz/<secret>/mcp
+
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-No-Search');
-  if (req.method === 'OPTIONS') return res.status(200).end();
-
-  const noSearch = req.headers['x-no-search'] === 'true';
-  const body = { ...req.body };
-
-  if (noSearch) {
-    delete body.tools;
-    delete body.tool_choice;
-  } else if (!body.tools) {
-    // Fallback only if the client didn't specify its own tool config
-    body.tools = [{ type: "web_search_20250305", name: "web_search" }];
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: { message: 'Method not allowed' } });
   }
-  // If body.tools was already sent by the client (with allowed_domains,
-  // max_uses, etc.), we leave it untouched instead of overwriting it.
 
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return res.status(500).json({
+      error: { message: 'ANTHROPIC_API_KEY is not set in this project\'s Environment Variables.' }
+    });
+  }
+
+  try {
+    const { use_amo_es, ...payload } = req.body || {};
+
+    const headers = {
       'Content-Type': 'application/json',
       'x-api-key': process.env.ANTHROPIC_API_KEY,
-      'anthropic-version': '2023-06-01',
-      'anthropic-beta': 'web-search-2025-03-05'
-    },
-    body: JSON.stringify(body)
-  });
+      'anthropic-version': '2023-06-01'
+    };
 
-  const data = await response.json();
-  res.status(200).json(data);
+    // Attach the Elasticsearch MCP server only for the archive lookup call.
+    if (use_amo_es) {
+      if (!process.env.AMO_ES_MCP_URL) {
+        return res.status(500).json({
+          error: { message: 'AMO_ES_MCP_URL is not set in this project\'s Environment Variables.' }
+        });
+      }
+      payload.mcp_servers = [
+        { type: 'url', url: process.env.AMO_ES_MCP_URL, name: 'amo-es' }
+      ];
+      headers['anthropic-beta'] = 'mcp-client-2025-04-04';
+    }
+
+    const upstream = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload)
+    });
+
+    const data = await upstream.json();
+    return res.status(upstream.status).json(data);
+  } catch (err) {
+    return res.status(500).json({ error: { message: err.message } });
+  }
 }
