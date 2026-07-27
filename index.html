@@ -26,9 +26,13 @@
   .container { max-width: 820px; margin: 48px auto; padding: 0 28px; }
   .prompt-editor { display: none; background: #1a1a1a; border: 0.5px solid #2e2e2e; border-radius: 16px; padding: 28px 32px; margin-bottom: 24px; }
   .prompt-editor.open { display: block; }
-  .editor-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .editor-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; gap: 12px; flex-wrap: wrap; }
   .editor-header label { font-size: 11px; font-weight: 500; color: #6b6560; text-transform: uppercase; letter-spacing: .08em; }
   .editor-actions { display: flex; gap: 8px; }
+  .editor-tabs { display: flex; gap: 6px; margin-bottom: 14px; }
+  .tab-btn { background: none; border: 0.5px solid #2e2e2e; border-radius: 8px; padding: 6px 14px; font-size: 12px; font-family: inherit; color: #6b6560; cursor: pointer; transition: all .2s; }
+  .tab-btn:hover { color: #e8e0d8; }
+  .tab-btn.active { border-color: #c8b89a; color: #c8b89a; }
   .pill-btn { background: none; border: 0.5px solid #2e2e2e; border-radius: 8px; padding: 6px 14px; font-size: 12px; font-family: inherit; color: #9a8f85; cursor: pointer; transition: all .2s; }
   .pill-btn:hover { border-color: #c8b89a; color: #e8e0d8; }
   .pill-btn.save { background: #e8e0d8; color: #121212; border-color: #e8e0d8; }
@@ -42,10 +46,17 @@
   textarea#inputText { width: 100%; background: rgba(18,18,18,0.25); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); border: 0.5px solid rgba(200,184,154,0.25); border-radius: 10px; padding: 16px; font-size: 15px; font-family: inherit; color: #e8e0d8; resize: vertical; min-height: 140px; outline: none; transition: border-color .2s; line-height: 1.6; }
   textarea#inputText::placeholder { color: #4a4540; }
   textarea#inputText:focus { border-color: rgba(200,184,154,0.6); background: rgba(18,18,18,0.45); }
-  .btn-row { display: flex; align-items: center; gap: 12px; margin-top: 16px; }
+  .btn-row { display: flex; align-items: center; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
   button#submitBtn { background: #e8e0d8; color: #121212; border: none; border-radius: 10px; padding: 13px 28px; font-size: 14px; font-weight: 500; cursor: pointer; transition: background .2s, opacity .2s; letter-spacing: .01em; }
   button#submitBtn:hover { background: #fff; }
   button#submitBtn:disabled { opacity: .35; cursor: not-allowed; }
+  .toggle { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #6b6560; cursor: pointer; user-select: none; letter-spacing: .02em; }
+  .toggle input { appearance: none; -webkit-appearance: none; width: 34px; height: 19px; border-radius: 10px; background: #2e2e2e; position: relative; cursor: pointer; transition: background .2s; outline: none; flex-shrink: 0; }
+  .toggle input::after { content: ''; position: absolute; top: 2.5px; left: 3px; width: 14px; height: 14px; border-radius: 50%; background: #6b6560; transition: transform .2s, background .2s; }
+  .toggle input:checked { background: rgba(200,184,154,0.28); }
+  .toggle input:checked::after { transform: translateX(14px); background: #c8b89a; }
+  .toggle input:focus-visible { box-shadow: 0 0 0 2px #c8b89a; }
+  .toggle input:checked + span { color: #c8b89a; }
   #status { font-size: 13px; color: #6b6560; }
   .dot { display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: #c8b89a; margin: 0 2px; animation: pulse .9s infinite alternate; }
   .dot:nth-child(2) { animation-delay: .3s; }
@@ -64,6 +75,27 @@
   .result-body a { color: #c8b89a; text-decoration: none; border-bottom: 0.5px solid #c8b89a44; transition: border-color .2s; }
   .result-body a:hover { border-color: #c8b89a; }
   .result-body em { color: #9a8f85; font-style: normal; }
+
+  /* ---- AMO archive block ---- */
+  .amo-topic { font-size: 13px; color: #6b6560; margin-bottom: 18px; }
+  .amo-topic strong { color: #9a8f85; font-weight: 500; }
+  .amo-item { border: 0.5px solid #2e2e2e; border-radius: 12px; padding: 18px 20px; margin-bottom: 14px; transition: border-color .2s; }
+  .amo-item:hover { border-color: rgba(200,184,154,0.35); }
+  .amo-item.tier-other { border-left: 2px solid #c8955a; }
+  .amo-item.tier-same { border-left: 2px solid #6b9a7a; }
+  .amo-head { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; margin-bottom: 8px; }
+  .amo-headline { font-size: 15px; color: #e8e0d8; font-weight: 500; line-height: 1.45; }
+  .amo-badge { flex-shrink: 0; font-size: 10px; text-transform: uppercase; letter-spacing: .08em; padding: 3px 9px; border-radius: 6px; white-space: nowrap; }
+  .badge-same { background: rgba(107,154,122,0.14); color: #7cae8c; }
+  .badge-other { background: rgba(200,149,90,0.14); color: #c8955a; }
+  .amo-meta { font-size: 12px; color: #6b6560; margin-bottom: 12px; }
+  .amo-line { font-size: 14px; line-height: 1.65; color: #d4ccc4; margin-bottom: 7px; }
+  .amo-line .k { color: #6b6560; font-size: 11px; text-transform: uppercase; letter-spacing: .07em; margin-right: 7px; }
+  .amo-line.warn { color: #c89a8a; }
+  .amo-links { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+  .amo-links a { font-size: 12px; padding: 6px 13px; border: 0.5px solid #2e2e2e; border-radius: 8px; color: #9a8f85; text-decoration: none; transition: all .2s; }
+  .amo-links a:hover { border-color: #c8b89a; color: #e8e0d8; }
+  .amo-empty { font-size: 14px; color: #6b6560; line-height: 1.7; }
 </style>
 </head>
 <body>
@@ -87,6 +119,10 @@
         <button class="pill-btn save" onclick="savePrompt()">Save</button>
       </div>
     </div>
+    <div class="editor-tabs">
+      <button class="tab-btn active" id="tab-main" onclick="switchTab('main')">Enrichment</button>
+      <button class="tab-btn" id="tab-amo" onclick="switchTab('amo')">AMO archive</button>
+    </div>
     <textarea id="promptEditor"></textarea>
   </div>
 
@@ -95,6 +131,10 @@
     <textarea id="inputText" placeholder="Paste article text, a short description, a URL, or a list of photo links…"></textarea>
     <div class="btn-row">
       <button id="submitBtn" onclick="runResearch()">Generate</button>
+      <label class="toggle" title="Search AMO's own published articles for background you can reuse">
+        <input type="checkbox" id="amoToggle" checked>
+        <span>Search AMO archive</span>
+      </label>
       <div id="status"></div>
     </div>
   </div>
@@ -106,12 +146,17 @@
         <button class="tool-btn" onclick="resetTool()">New</button>
       </div>
       <div class="result-body" id="resultContent"></div>
+      <div class="result-body" id="amoContent"></div>
     </div>
   </div>
 
 </div>
 
 <script>
+// Model used for both calls. Switch the archive call to a cheaper model here if needed.
+const MODEL = "claude-opus-4-6";
+const AMO_MODEL = "claude-opus-4-6";
+
 const DEFAULT_PROMPT = `You are a research assistant for a digital media team. Your job is to suggest additional sources and ideas that can enrich a primary news article — not to summarize or repeat what the researcher already provided.
 When a researcher gives you a news article (as text, a short description, or a URL), do NOT repeat, rephrase, or summarize the information from their input. Treat everything they shared as already known. Your only job is to suggest what is MISSING — new angles, external sources, additional context, and comparable cases they have not mentioned — so they can build a fuller article.
 Respond with the following structure — always in English:
@@ -201,7 +246,75 @@ Rules:
 - The Celebrity appearance & style intelligence section is optional and should only appear when the story is clearly about a celebrity's looks, outfit, styling, beauty routine, body, or cosmetic procedures. Skip it entirely for political, business, or non-appearance-related stories.
 - Within the Celebrity appearance & style intelligence section, include only the sub-sections that are directly relevant. Do not force sub-sections that don't apply to the story.`;
 
+const DEFAULT_AMO_PROMPT = `You are the AMO archive scout inside an editorial research tool. A researcher is writing a new article. Your job is to search AMO's own CMS (Elasticsearch) and return the previously published AMO articles that can safely be reused as SECONDARY CONTENT (a background section) inside that specific new article.
+
+You have one tool: the "amo-es" MCP server (Elasticsearch). Index: "posts".
+
+## What makes a candidate good or bad
+These rules come from a performance analysis of 12 published articles measured by average intext IPP (benchmark: 12.5; fiction average: 26.52). Follow them exactly — they decide what you return.
+
+1. SAME STORY, NOT SAME PERSON. This is the strongest predictor by far. The background must cover the same case, event, or storyline as the researcher's input. An article about the same celebrity but a different storyline is a weak candidate: the lowest-scoring article in the analysis (9.61) had a perfectly written transition sentence but the background was an unrelated old story about the same person. A good transition cannot rescue the wrong topic.
+2. NO REPEATS. Never suggest material whose central quote or fact already appears in the researcher's input. One article did everything else right and still fell below the benchmark purely because it re-used a quote already published earlier in the same piece.
+3. IT MUST READ LIKE A STORY. Prefer candidates rich in timestamps, direct quotes, and rising tension over flat recaps or list-style roundups.
+4. LENGTH IS IRRELEVANT. Background can be 8% or 70% of the finished article — the top scorer in the analysis was 70% background. Never filter or rank by word count.
+5. REUSE IS FINE. The same background article can feed several different pieces about the same case without hurting any of them.
+6. The shift into background must always be labelled in the finished article ("As we previously reported…"), so supply a ready transition line for every candidate.
+
+## Search procedure
+1. Read the researcher's input and identify: the people involved, the specific case/event, and 2–4 distinctive keywords (full names, case name, location, event name).
+2. Start narrow — headline-level matching:
+{"size": 25, "_source": ["id","public_id","main_headline","title","description","slug","sites","status","language","published_at"], "sort": [{"_score": "desc"}, {"published_at": "desc"}], "query": {"bool": {"filter": [{"term": {"status": 3}}, {"term": {"language": "en"}}], "must": [{"multi_match": {"query": "KEYWORDS", "fields": ["main_headline^4","title^4","slug^3","description^2"], "type": "best_fields"}}]}}}
+3. If that returns fewer than 3 relevant hits, broaden: add "body" to the fields, or drop the language filter, or search the case name alone. Run at most 4 searches total, then answer with what you have.
+4. Discard: the researcher's own article if it is already in the index; anything with status other than 3; anything that is neither the same case/event nor at least the same person; near-duplicate republications of the same piece (keep the best one).
+5. Rank remaining candidates: same case/event first (most recent and most detailed first), then same-person-different-storyline.
+6. Return at most 6 candidates. Quality over quantity — returning 2 strong ones is better than padding with weak ones.
+
+## Building the two links (mandatory, both, for every candidate)
+Admin link — always, uses "id" (not public_id):
+https://amooffice.com/en/cms/posts/<id>
+
+Web link — uses "public_id", "slug", and the FIRST id in "sites". Standard format for every domain except the seven listed below:
+https://<domain>/<public_id>-<slug>.html
+Slug-only exception (these seven domains only): https://<domain>/<slug>/
+womanlylive.com (37), thecelebritist.com (39), truthtempest.com (45), deninnovator.com (46), starryjourneyer.com (47), creativecuisinerecipe.com (48), factsflare.com (55)
+Never add UTM or tracking parameters. If "slug" or "public_id" is missing, set web_url to null.
+
+Site id → domain map:
+2:amomama.de, 3:amomama.fr, 4:amomama.it, 5:verticaldramaexplorer.com, 6:amomama.us, 8:amomama.com, 9:yourcoolstories.com, 10:amomama.me, 14:celebritist.me, 17:creativecuisinerecipes1.com, 19:amomama.es, 20:stars.amomama.us, 23:es.amomama.com, 24:news.amomama.com, 25:amomama.io, 26:amomama.net, 27:amomama.info, 29:celebritist.us, 31:stars.celebritist.me, 36:posts.amomama.es, 37:womanlylive.com, 38:amodays.com, 39:thecelebritist.com, 40:fintreat.com, 41:curiosityfacts.com, 42:geeksstory.com, 45:truthtempest.com, 46:deninnovator.com, 47:starryjourneyer.com, 48:creativecuisinerecipe.com, 49:fashiongirlsly.com, 50:amomedia.com, 51:amoplanet.com, 52:after11.pm, 53:retrotreat.com, 54:ossa.tv, 55:factsflare.com, 56:contraspero.com, 57:barabola.com, 58:gogirok.com, 59:ondoho.com, 60:morelimedia.com, 61:ozdomedia.com, 62:contranoche.com, 63:myoneforall.com, 64:thetopselected.com, 65:contradia.com, 66:haydamakas.com, 67:financeply.com, 68:moneytano.com, 69:walletilo.com, 70:healthquix.com, 71:medifacto.com, 72:jobsyro.com, 73:daily.askthis.co, 74:storimia.com, 75:finolivo.com, 76:celebritive.com, 77:saveonix.com, 78:finomira.com, 79:moneyluma.com, 80:cashariva.com, 81:moneyzira.com, 82:healquix.com, 83:medelvo.com, 84:wellistra.com, 85:wellaryx.com, 86:vitavoro.com, 87:worktura.com, 88:jobuvox.com, 89:hiretura.com, 90:affluflex.com, 91:fortunevia.com, 92:fundorio.com, 93:affluvero.com, 94:tripinnsguide.com, 95:techappadvisor.com, 96:innerglowvibe.com, 97:investsurance.com, 98:finvestresource.com, 99:fincoverzone.com, 100:facialcareguide.com, 101:microbiomeskin.com, 102:microbiomeface.com, 103:openhousetips.com, 104:urbanlivinguide.com, 105:opscontrolhub.com, 106:educationskillhub.com, 107:onlinecareersguide.com, 108:carvalueadvisor.com, 109:carbuyinginsight.com, 110:gadgetsandapps.com, 111:travelriskhub.com, 112:tripinsguide.com, 113:homecraftguide.com, 114:lagomvibe.com, 115:finvaultzone.com, 116:finvaulthub.com, 117:facialglowhub.com, 118:fixer-upperhouse.com, 119:opsinsightshub.com, 120:eduskillguide.com, 121:carvaluetips.com, 122:capsulerobe.com, 123:farewatchhub.com, 124:amomama.pl, 125:bylotak.com
+If a site id is not on this map, set web_url to null and put the raw id in "site".
+
+## Output
+Reply with ONE valid JSON object and nothing else — no prose before or after, no markdown code fences.
+
+{
+  "topic": "the specific case/event you searched for, one short line",
+  "articles": [
+    {
+      "id": 542936,
+      "headline": "exact headline from the CMS",
+      "published_at": "2026-05-14",
+      "site": "news.amomama.com",
+      "web_url": "https://news.amomama.com/542936-slug-here.html",
+      "admin_url": "https://amooffice.com/en/cms/posts/542936",
+      "tier": "same_event",
+      "why": "one sentence — which part of the same case or event this article covers",
+      "use_as": "one or two sentences — what specifically to lift from it as the background section, naming the story elements worth keeping (timestamps, quotes, the turn)",
+      "transition": "a ready-to-paste transition line in the article's voice, e.g. 'As we previously reported, ...'",
+      "repeat_risk": "a quote or fact in this article that already appears in the researcher's input — or null if there is no overlap"
+    }
+  ],
+  "structure_tip": "one line of advice for this specific story, only if it applies: covering several angles at once and saying so in the headline, or holding the biggest reveal until later once the reader is invested. Otherwise null.",
+  "notes": "only if you found nothing on the same case/event — say so plainly and state what you searched. Otherwise null."
+}
+
+"tier" must be exactly "same_event" or "same_person_other_story".
+For "same_person_other_story" candidates, "why" must state plainly that the storyline differs and that the headline has to cover both angles for it to be safe to use.
+Never invent an article, an id, a headline, or a URL. Everything must come from an actual search result. If the search finds nothing usable, return an empty "articles" array and fill in "notes".`;
+
 let currentPrompt = localStorage.getItem('storyEnricherPrompt') || DEFAULT_PROMPT;
+let currentAmoPrompt = localStorage.getItem('storyEnricherAmoPrompt') || DEFAULT_AMO_PROMPT;
+let activeTab = 'main';
+
 document.getElementById('promptEditor').value = currentPrompt;
 
 function toggleEditor() {
@@ -211,60 +324,186 @@ function toggleEditor() {
   btn.classList.toggle('active', isOpen);
 }
 
-function savePrompt() {
-  currentPrompt = document.getElementById('promptEditor').value;
-  localStorage.setItem('storyEnricherPrompt', currentPrompt);
+function switchTab(tab) {
+  // keep whatever is currently typed before switching away
+  const box = document.getElementById('promptEditor');
+  if (activeTab === 'main') currentPrompt = box.value; else currentAmoPrompt = box.value;
+  activeTab = tab;
+  box.value = tab === 'main' ? currentPrompt : currentAmoPrompt;
+  document.getElementById('tab-main').classList.toggle('active', tab === 'main');
+  document.getElementById('tab-amo').classList.toggle('active', tab === 'amo');
+}
+
+function flashSaved() {
   const badge = document.getElementById('savedBadge');
   badge.classList.add('show');
   setTimeout(() => badge.classList.remove('show'), 2000);
+}
+
+function savePrompt() {
+  const val = document.getElementById('promptEditor').value;
+  if (activeTab === 'main') {
+    currentPrompt = val;
+    localStorage.setItem('storyEnricherPrompt', val);
+  } else {
+    currentAmoPrompt = val;
+    localStorage.setItem('storyEnricherAmoPrompt', val);
+  }
+  flashSaved();
 }
 
 function resetPrompt() {
-  document.getElementById('promptEditor').value = DEFAULT_PROMPT;
-  currentPrompt = DEFAULT_PROMPT;
-  localStorage.setItem('storyEnricherPrompt', DEFAULT_PROMPT);
-  const badge = document.getElementById('savedBadge');
-  badge.classList.add('show');
-  setTimeout(() => badge.classList.remove('show'), 2000);
+  const def = activeTab === 'main' ? DEFAULT_PROMPT : DEFAULT_AMO_PROMPT;
+  document.getElementById('promptEditor').value = def;
+  if (activeTab === 'main') {
+    currentPrompt = def;
+    localStorage.setItem('storyEnricherPrompt', def);
+  } else {
+    currentAmoPrompt = def;
+    localStorage.setItem('storyEnricherAmoPrompt', def);
+  }
+  flashSaved();
 }
 
-async function runResearch() {
+async function callApi(payload) {
+  const res = await fetch("/api/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message);
+  return data;
+}
+
+function textOf(data) {
+  return (data.content || []).filter(b => b.type === "text").map(b => b.text).join("\n");
+}
+
+function runResearch() {
   const input = document.getElementById('inputText').value.trim();
   if (!input) return;
 
   const btn = document.getElementById('submitBtn');
   const status = document.getElementById('status');
   const output = document.getElementById('output');
+  const useAmo = document.getElementById('amoToggle').checked;
 
   btn.disabled = true;
   output.style.display = 'none';
+  document.getElementById('resultContent').innerHTML = '';
+  document.getElementById('amoContent').innerHTML = '';
   status.innerHTML = '<span class="dot"></span><span class="dot"></span><span class="dot"></span>';
 
+  // Both calls run in parallel — the archive lookup is slower, so it fills in after.
+  const enrich = runEnrichment(input, status, output, btn);
+  if (useAmo) runAmoLookup(input, output);
+  return enrich;
+}
+
+async function runEnrichment(input, status, output, btn) {
   try {
-    const res = await fetch("/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "claude-opus-4-6",
-        max_tokens: 4000,
-        system: currentPrompt,
-        messages: [{ role: "user", content: input }]
-      })
+    const data = await callApi({
+      model: MODEL,
+      max_tokens: 4000,
+      system: currentPrompt,
+      messages: [{ role: "user", content: input }]
     });
-
-    const data = await res.json();
-    if (data.error) throw new Error(data.error.message);
-
-    const text = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("");
-    document.getElementById('resultContent').innerHTML = renderContent(text);
+    document.getElementById('resultContent').innerHTML = renderContent(textOf(data));
     output.style.display = 'block';
     status.innerHTML = '';
     output.scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch (err) {
-    status.innerHTML = `<span style="color:#c87070">Error: ${err.message}</span>`;
+    status.innerHTML = '<span style="color:#c87070">Error: ' + err.message + '</span>';
   } finally {
     btn.disabled = false;
   }
+}
+
+async function runAmoLookup(input, output) {
+  const box = document.getElementById('amoContent');
+  output.style.display = 'block';
+  box.innerHTML = '<div class="block"><div class="block-title">🗂 AMO archive — background you already own</div>'
+    + '<div class="amo-empty">Searching the CMS <span class="dot"></span><span class="dot"></span><span class="dot"></span></div></div>';
+
+  try {
+    const data = await callApi({
+      use_amo_es: true,
+      model: AMO_MODEL,
+      max_tokens: 6000,
+      system: currentAmoPrompt,
+      messages: [{ role: "user", content: "Primary story the researcher is working on:\n\n" + input }]
+    });
+    const parsed = extractJson(textOf(data));
+    if (!parsed) throw new Error('The archive lookup returned an unreadable answer. Try Generate again.');
+    box.innerHTML = renderAmo(parsed);
+  } catch (err) {
+    box.innerHTML = '<div class="block"><div class="block-title">🗂 AMO archive — background you already own</div>'
+      + '<div class="amo-empty" style="color:#c87070">Could not reach the archive: ' + escapeHtml(err.message) + '</div></div>';
+  }
+}
+
+function extractJson(text) {
+  if (!text) return null;
+  const cleaned = text.replace(/```json/g, '').replace(/```/g, '').trim();
+  const start = cleaned.indexOf('{');
+  const end = cleaned.lastIndexOf('}');
+  if (start === -1 || end === -1) return null;
+  try {
+    return JSON.parse(cleaned.slice(start, end + 1));
+  } catch (e) {
+    return null;
+  }
+}
+
+function escapeHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function renderAmo(data) {
+  let html = '<div class="block"><div class="block-title">🗂 AMO archive — background you already own</div>';
+
+  if (data.topic) {
+    html += '<div class="amo-topic">Searched for: <strong>' + escapeHtml(data.topic) + '</strong></div>';
+  }
+
+  const items = Array.isArray(data.articles) ? data.articles : [];
+
+  if (!items.length) {
+    html += '<div class="amo-empty">' + escapeHtml(data.notes || 'No AMO articles on this case were found. Write the background from external sources instead.') + '</div>';
+    return html + '</div>';
+  }
+
+  items.forEach(a => {
+    const sameEvent = a.tier !== 'same_person_other_story';
+    html += '<div class="amo-item ' + (sameEvent ? 'tier-same' : 'tier-other') + '">';
+    html += '<div class="amo-head"><div class="amo-headline">' + escapeHtml(a.headline || 'Untitled') + '</div>'
+      + '<div class="amo-badge ' + (sameEvent ? 'badge-same' : 'badge-other') + '">'
+      + (sameEvent ? 'Same story' : 'Same person · other story') + '</div></div>';
+
+    const meta = [a.published_at, a.site, a.id ? 'ID ' + a.id : null].filter(Boolean).map(escapeHtml).join(' · ');
+    if (meta) html += '<div class="amo-meta">' + meta + '</div>';
+
+    if (a.why) html += '<div class="amo-line"><span class="k">Why</span>' + escapeHtml(a.why) + '</div>';
+    if (a.use_as) html += '<div class="amo-line"><span class="k">Use as</span>' + escapeHtml(a.use_as) + '</div>';
+    if (a.transition) html += '<div class="amo-line"><span class="k">Transition</span><em>' + escapeHtml(a.transition) + '</em></div>';
+    if (a.repeat_risk) html += '<div class="amo-line warn"><span class="k">Already used</span>' + escapeHtml(a.repeat_risk) + '</div>';
+
+    html += '<div class="amo-links">';
+    if (a.web_url) html += '<a href="' + escapeHtml(a.web_url) + '" target="_blank" rel="noopener">Open on site ↗</a>';
+    if (a.admin_url) html += '<a href="' + escapeHtml(a.admin_url) + '" target="_blank" rel="noopener">Open in CMS ↗</a>';
+    html += '</div></div>';
+  });
+
+  if (data.structure_tip) {
+    html += '<div class="amo-topic" style="margin-top:16px">Structure: <strong>' + escapeHtml(data.structure_tip) + '</strong></div>';
+  }
+  if (data.notes) {
+    html += '<div class="amo-topic">' + escapeHtml(data.notes) + '</div>';
+  }
+
+  return html + '</div>';
 }
 
 function renderContent(text) {
@@ -291,7 +530,9 @@ function renderContent(text) {
 }
 
 function copyResult() {
-  const text = document.getElementById('resultContent').innerText;
+  const main = document.getElementById('resultContent').innerText;
+  const amo = document.getElementById('amoContent').innerText;
+  const text = amo.trim() ? main + '\n\n' + amo : main;
   navigator.clipboard.writeText(text).then(() => {
     const btn = document.querySelectorAll('.tool-btn')[0];
     btn.textContent = 'Copied';
@@ -302,6 +543,8 @@ function copyResult() {
 function resetTool() {
   document.getElementById('inputText').value = '';
   document.getElementById('output').style.display = 'none';
+  document.getElementById('resultContent').innerHTML = '';
+  document.getElementById('amoContent').innerHTML = '';
   document.getElementById('status').innerHTML = '';
   document.getElementById('inputText').focus();
 }
