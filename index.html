@@ -58,6 +58,7 @@
 
   /* ---- quiet note when material was filtered out ---- */
   .omit-note { font-size: 11px; color: #4a4540; margin-top: 26px; letter-spacing: .02em; }
+  .warn-line { font-size: 12px; color: #c8a870; margin-bottom: 18px; }
 
   /* ---- AMO archive block ---- */
   .amo-topic { font-size: 13px; color: #6b6560; margin-bottom: 18px; }
@@ -190,6 +191,33 @@ const APPROVED_DOMAINS = [
 
 const APPROVED_HOSTS = APPROVED_DOMAINS.map(d => d.toLowerCase());
 
+// ---------------------------------------------------------------------------
+// Domains on the approved list that BLOCK the search crawler. The API rejects
+// the whole request with a 400 if any of these is passed in allowed_domains,
+// so they have to be excluded from the search restriction. They stay on
+// APPROVED_DOMAINS above — a researcher can still cite them by hand — but this
+// tool cannot retrieve or verify anything from them.
+// Verified against the API's own error response on 2026-07-28.
+// ---------------------------------------------------------------------------
+const SEARCH_BLOCKED_DOMAINS = [
+  "al.com","allure.com","apimages.com","argusleader.com","azcentral.com","bbc.co.uk","bbc.com",
+  "burlingtonfreepress.com","businessinsider.com","chicagotribune.com","clarionledger.com",
+  "cleveland.com","cosmopolitan.com","courant.com","courier-journal.com","dailymail.co.uk",
+  "dailystar.co.uk","dallasnews.com","delawareonline.com","denverpost.com","desmoinesregister.com",
+  "elle.com","esquire.com","ew.com","express.co.uk","freep.com","genius.com","glamour.com","gq.com",
+  "harpersbazaar.com","houstonchronicle.com","idahostatesman.com","independent.co.uk","indystar.com",
+  "instyle.com","jsonline.com","kansas.com","latimes.com","metro.co.uk","miamiherald.com",
+  "mirror.co.uk","newsobserver.com","nj.com","nydailynews.com","nymag.com","nypost.com","nytimes.com",
+  "oklahoman.com","oregonlive.com","pagesix.com","people.com","pitchfork.com","politico.com",
+  "popsugar.com","providencejournal.com","reuters.com","richmond.com","sfchronicle.com",
+  "tennessean.com","thecut.com","theguardian.com","thesun.co.uk","timesunion.com",
+  "townandcountrymag.com","usatoday.com","usmagazine.com","vanityfair.com","vogue.com","vulture.com",
+  "wsj.com"
+];
+
+// What actually gets passed to the search tool: approved AND reachable.
+const SEARCHABLE_DOMAINS = APPROVED_DOMAINS.filter(d => SEARCH_BLOCKED_DOMAINS.indexOf(d) === -1);
+
 function isApprovedHost(host) {
   host = String(host || '').replace(/^www\./, '').toLowerCase();
   return APPROVED_HOSTS.some(d => host === d || host.endsWith('.' + d));
@@ -205,6 +233,8 @@ Inventing information is strictly forbidden and is the single worst thing you ca
 You have a web_search tool. Use it before you write anything, every single time, with no exceptions. Run several searches: the people involved, the specific case or event, then one search per comparable case, timeline event, or fashion detail you intend to cite. Build your answer only from what those searches actually return. You need a real, working article URL for every fact you keep — searching is the only way to get one, so never skip the searches and never write the answer from memory.
 
 The search tool is hard-restricted at the API level to the approved outlets listed below: it is technically incapable of returning a result from any other website. Two consequences follow, and both matter. First, you never need to judge whether a source is allowed — if it came back from a search, it is approved. Second, if a search returns nothing, that does NOT mean you should look elsewhere, work around it, or supply the information yourself; it means no approved outlet has published this, and the honest answer is NOT FOUND. Never name an outlet you did not receive a result from, even one on the list.
+
+Be aware that a large number of the approved outlets block the search crawler and are therefore unreachable from this tool — People, US Weekly, Page Six, NY Post, Daily Mail, The Sun, Daily Mirror, Metro, Entertainment Weekly, Vanity Fair, Vulture, New York Magazine, PopSugar, The Cut, Business Insider, The New York Times, Reuters, The Wall Street Journal, USA Today, The Guardian, BBC, The Independent, Politico, Los Angeles Times, Chicago Tribune, Vogue, Elle, GQ, Esquire, Cosmopolitan, Glamour, Harper's Bazaar, InStyle, Allure, Town & Country, Pitchfork, Genius, AP Images and most state-level regional papers among them. You will simply never see results from these, and that is expected — it is not a reason to reproduce their reporting from memory, to attribute a fact to them anyway, or to treat the story as unreported. Work with the outlets that do come back: TMZ, E! News, Entertainment Tonight, HollywoodLife, The Blast, Closer Weekly, The Hollywood Reporter, Variety, Deadline, Billboard, WWD, Parade, Extra, Access Hollywood, Yahoo Entertainment, Today, Good Morning America, Hello!, Rolling Stone, CNN, Fox News, NBC News, ABC News, CBS News, The Washington Post, Newsweek, Time, NPR, IMDb, CourtListener and Law & Crime.
 
 Respond with the following structure — always in English:
 ---
@@ -436,35 +466,43 @@ function runResearch() {
   return enrich;
 }
 
-// The API has been rejecting the full allowlist, so try progressively shorter
-// prefixes and fall back to an unrestricted search as a last resort. Whatever
-// the search returns, the client-side filter still enforces the source list, so
-// a rejected allowlist can never leak an unapproved outlet into the output.
-// The exact API message is logged to the console for diagnosis.
-async function callWithSearch(base) {
-  const attempts = [
-    APPROVED_DOMAINS,
-    APPROVED_DOMAINS.slice(0, 100),
-    APPROVED_DOMAINS.slice(0, 50),
-    APPROVED_DOMAINS.slice(0, 20),
-    null
-  ];
+// Runs the search restricted to SEARCHABLE_DOMAINS. Some publishers block the
+// search crawler, and the API rejects the whole request with a 400 that names
+// them — so if that happens, read the names out of the error, drop them, and try
+// again. That keeps working if the blocked set changes on Anthropic's side.
+// Whatever the search returns, the client-side filter still enforces the full
+// approved list, so a failed restriction can never leak an unapproved outlet.
+function parseBlockedDomains(message) {
+  if (!/not accessible to our user agent/i.test(message)) return [];
+  const listPart = message.slice(message.indexOf('['), message.indexOf(']') + 1);
+  const found = [];
+  listPart.replace(/'([^']+)'/g, (m, d) => { found.push(d.toLowerCase()); return m; });
+  return found;
+}
 
-  for (let i = 0; i < attempts.length; i++) {
+async function callWithSearch(base) {
+  let domains = SEARCHABLE_DOMAINS.slice();
+
+  for (let attempt = 1; attempt <= 4; attempt++) {
     const tool = { type: "web_search_20250305", name: "web_search", max_uses: 12 };
-    if (attempts[i]) tool.allowed_domains = attempts[i];
+    if (domains.length) tool.allowed_domains = domains;
     try {
       const data = await callApi(Object.assign({}, base, { tools: [tool] }));
-      console.info('[story-enricher] search ran with allowed_domains =',
-        attempts[i] ? attempts[i].length : 'none (unrestricted; filter still applied)');
+      console.info('[story-enricher] search ran across ' + domains.length + ' approved, reachable domains');
       return data;
     } catch (e) {
-      const domainIssue = /allowed_domains|domain|invalid_request|tools?\./i.test(e.message);
-      console.warn('[story-enricher] attempt ' + (i + 1) + ' ('
-        + (attempts[i] ? attempts[i].length + ' domains' : 'unrestricted') + ') failed: ' + e.message);
-      if (!domainIssue || i === attempts.length - 1) throw e;
+      const newlyBlocked = parseBlockedDomains(e.message);
+      if (newlyBlocked.length) {
+        console.warn('[story-enricher] these approved outlets block the search crawler and were dropped: '
+          + newlyBlocked.join(', ') + ' — add them to SEARCH_BLOCKED_DOMAINS to skip this round trip next time');
+        domains = domains.filter(d => newlyBlocked.indexOf(d) === -1);
+        continue;
+      }
+      console.warn('[story-enricher] search failed: ' + e.message);
+      throw e;
     }
   }
+  throw new Error('The search could not be run against the approved source list. Nothing was returned rather than risk an unsourced answer.');
 }
 
 async function runEnrichment(input, status, output, btn) {
