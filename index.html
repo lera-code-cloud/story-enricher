@@ -56,19 +56,8 @@
   .result-body a:hover { border-color: #c8b89a; }
   .result-body em { color: #9a8f85; font-style: normal; }
 
-  /* ---- broken / homepage-only source links ---- */
-  .result-body a.bare-link { color: #c89a8a; border-bottom: 0.5px dotted #c89a8a; }
-  .bare-flag { font-size: 10px; text-transform: uppercase; letter-spacing: .07em; color: #c89a8a; border: 0.5px solid rgba(200,154,138,0.4); border-radius: 5px; padding: 1px 5px; margin-left: 5px; white-space: nowrap; }
-  .miss-flag { font-size: 10px; text-transform: uppercase; letter-spacing: .07em; color: #c87070; border: 0.5px solid rgba(200,112,112,0.45); border-radius: 5px; padding: 1px 5px; margin-left: 5px; white-space: nowrap; }
-  .note-flag { font-size: 10px; text-transform: uppercase; letter-spacing: .07em; color: #c8a870; border: 0.5px solid rgba(200,168,112,0.45); border-radius: 5px; padding: 1px 5px; margin-left: 5px; white-space: nowrap; }
-  .warn-line { font-size: 12px; color: #c8a870; margin-bottom: 18px; }
-  .audit-summary { font-size: 12px; line-height: 1.7; color: #c87070; border: 0.5px solid rgba(200,112,112,0.3); border-radius: 10px; padding: 12px 16px; margin-bottom: 22px; }
-  .audit-summary.clean { color: #7cae8c; border-color: rgba(107,154,122,0.3); }
-
-  /* ---- citation list ---- */
-  .cites { margin-top: 4px; }
-  .cites a { display: block; font-size: 13px; margin-bottom: 6px; word-break: break-all; }
-  .cites .cite-title { color: #d4ccc4; }
+  /* ---- quiet note when material was filtered out ---- */
+  .omit-note { font-size: 11px; color: #4a4540; margin-top: 26px; letter-spacing: .02em; }
 
   /* ---- AMO archive block ---- */
   .amo-topic { font-size: 13px; color: #6b6560; margin-bottom: 18px; }
@@ -124,7 +113,6 @@
         <button class="tool-btn" onclick="resetTool()">New</button>
       </div>
       <div class="result-body" id="resultContent"></div>
-      <div class="result-body" id="citeContent"></div>
       <div class="result-body" id="amoContent"></div>
     </div>
   </div>
@@ -206,16 +194,6 @@ function isApprovedHost(host) {
   host = String(host || '').replace(/^www\./, '').toLowerCase();
   return APPROVED_HOSTS.some(d => host === d || host.endsWith('.' + d));
 }
-
-// Live web search for the enrichment call, hard-restricted to the list above.
-// Without this the model has no real article URLs and every "Source:" link
-// degrades to an outlet homepage.
-const WEB_SEARCH_TOOL = {
-  type: "web_search_20250305",
-  name: "web_search",
-  max_uses: 12,
-  allowed_domains: APPROVED_DOMAINS
-};
 
 const SYSTEM_PROMPT = `You are a research assistant for a digital media team. Your job is to suggest additional sources and ideas that can enrich a primary news article — not to summarize or repeat what the researcher already provided.
 When a researcher gives you a news article (as text, a short description, or a URL), do NOT repeat, rephrase, or summarize the information from their input. Treat everything they shared as already known. Your only job is to suggest what is MISSING — new angles, external sources, additional context, and comparable cases they have not mentioned — so they can build a fuller article.
@@ -320,6 +298,7 @@ Rules:
 - Never guess, shorten, edit, reconstruct, or invent a URL, and never paste a URL you did not receive from a search result. Copy article URLs exactly as returned.
 - If you are listing multiple people or events in one section, each individual item must have its own source with its own article link on the same line.
 - Every section heading must appear in the response, but a section's CONTENT is never mandatory. If your searches produced no sourced material for a section, write exactly this under that heading and nothing else: NOT FOUND — no approved outlet has published this. Never pad a section with generic, inferred, or plausible-sounding filler in order to complete the structure. A section marked NOT FOUND is a correct, acceptable answer; an invented section is a failure.
+- The one exception is the optional Celebrity appearance & style intelligence section: when the story is not about a celebrity's looks, outfit, beauty, or body, omit that section completely — no heading, no NOT FOUND line, nothing. The same applies to its individual sub-sections: include only the ones that apply and silently leave out the rest. Never announce that a section does not apply.
 - Banned sentence types — these are the shapes that unsourced filler takes, and they are forbidden unless a specific article states them and is linked: "authorities began investigating", "details are emerging gradually", "the news spread on social media", "family and friends are calling for justice", "the public awaits further updates", "the case has raised questions about". If you cannot name who said it, when, and in which article, do not write it.
 - A timeline entry with no date and no source is filler. Every timeline entry needs a real date (or a dated event) plus its own article link, otherwise delete the entry. An empty timeline is acceptable; a vague one is not.
 - Never ask clarifying questions. Respond immediately with the structure.
@@ -448,7 +427,6 @@ function runResearch() {
   btn.disabled = true;
   output.style.display = 'none';
   document.getElementById('resultContent').innerHTML = '';
-  document.getElementById('citeContent').innerHTML = '';
   document.getElementById('amoContent').innerHTML = '';
   status.innerHTML = 'Searching the web <span class="dot"></span><span class="dot"></span><span class="dot"></span>';
 
@@ -458,41 +436,53 @@ function runResearch() {
   return enrich;
 }
 
+// The API has been rejecting the full allowlist, so try progressively shorter
+// prefixes and fall back to an unrestricted search as a last resort. Whatever
+// the search returns, the client-side filter still enforces the source list, so
+// a rejected allowlist can never leak an unapproved outlet into the output.
+// The exact API message is logged to the console for diagnosis.
+async function callWithSearch(base) {
+  const attempts = [
+    APPROVED_DOMAINS,
+    APPROVED_DOMAINS.slice(0, 100),
+    APPROVED_DOMAINS.slice(0, 50),
+    APPROVED_DOMAINS.slice(0, 20),
+    null
+  ];
+
+  for (let i = 0; i < attempts.length; i++) {
+    const tool = { type: "web_search_20250305", name: "web_search", max_uses: 12 };
+    if (attempts[i]) tool.allowed_domains = attempts[i];
+    try {
+      const data = await callApi(Object.assign({}, base, { tools: [tool] }));
+      console.info('[story-enricher] search ran with allowed_domains =',
+        attempts[i] ? attempts[i].length : 'none (unrestricted; filter still applied)');
+      return data;
+    } catch (e) {
+      const domainIssue = /allowed_domains|domain|invalid_request|tools?\./i.test(e.message);
+      console.warn('[story-enricher] attempt ' + (i + 1) + ' ('
+        + (attempts[i] ? attempts[i].length + ' domains' : 'unrestricted') + ') failed: ' + e.message);
+      if (!domainIssue || i === attempts.length - 1) throw e;
+    }
+  }
+}
+
 async function runEnrichment(input, status, output, btn) {
   try {
-    const base = {
+    const data = await callWithSearch({
       model: MODEL,
       max_tokens: 8000,
       system: SYSTEM_PROMPT,
       messages: [{ role: "user", content: input }]
-    };
-
-    let data, restricted = true;
-    try {
-      data = await callApi(Object.assign({}, base, { tools: [WEB_SEARCH_TOOL] }));
-    } catch (e) {
-      // If the API rejects the allowlist itself, still run the search — but say so.
-      if (/allowed_domains|invalid_request|domain/i.test(e.message)) {
-        restricted = false;
-        const plainTool = { type: "web_search_20250305", name: "web_search", max_uses: 12 };
-        data = await callApi(Object.assign({}, base, { tools: [plainTool] }));
-      } else {
-        throw e;
-      }
-    }
+    });
 
     const box = document.getElementById('resultContent');
     let html = '';
-    if (!restricted) {
-      html += '<div class="warn-line">⚠ the approved-domain restriction was rejected by the API and could not be applied to this search — check every source manually</div>';
-    }
     if (data.stop_reason === 'max_tokens') {
       html += '<div class="warn-line">⚠ response was cut off by the length limit — some sections may be incomplete</div>';
     }
     box.innerHTML = html + renderContent(textOf(data));
-    const cites = citationsOf(data);
-    auditOutput(box, cites);
-    document.getElementById('citeContent').innerHTML = renderCitations(cites);
+    filterOutput(box, citationsOf(data));
 
     output.style.display = 'block';
     status.innerHTML = '';
@@ -502,6 +492,17 @@ async function runEnrichment(input, status, output, btn) {
   } finally {
     btn.disabled = false;
   }
+}
+
+// Sections whose every line must carry a source. Story summary and Storytelling
+// angles are editorial judgement, not claims of fact, so they are exempt.
+const SOURCED_SECTION_RE = /background|similar|precedent|timeline|appearance|style|surgery|fashion/i;
+
+function normUrl(u) {
+  try {
+    const p = new URL(u);
+    return p.host.replace(/^www\./, '').toLowerCase() + p.pathname.replace(/\/+$/, '').toLowerCase();
+  } catch (e) { return String(u); }
 }
 
 // Social platforms are allowed for direct quotes from official accounts only.
@@ -527,121 +528,76 @@ function socialKind(u) {
   const target = u.pathname + u.search;
   return SOCIAL_POST_PATTERNS[key].test(target) ? 'post' : 'profile';
 }
-// Sections whose every line must carry a source. Story summary and Storytelling
-// angles are editorial judgement, not claims of fact, so they are exempt.
-const SOURCED_SECTION_RE = /background|similar|precedent|timeline|appearance|style|surgery|fashion/i;
 
-function normUrl(u) {
-  try {
-    const p = new URL(u);
-    return p.host.replace(/^www\./, '').toLowerCase() + p.pathname.replace(/\/+$/, '').toLowerCase();
-  } catch (e) { return String(u); }
-}
+// Does this link meet the source standard? Anything that fails is dropped
+// silently along with the sentence that leaned on it.
+function linkPasses(href, cites) {
+  let u;
+  try { u = new URL(href); } catch (e) { return false; }
 
-function markAfter(node, text, cls, title) {
-  const flag = document.createElement('span');
-  flag.className = cls;
-  flag.textContent = text;
-  flag.title = title;
-  node.insertAdjacentElement('afterend', flag);
-}
+  // Must be one of the approved outlets.
+  if (!isApprovedHost(u.host)) return false;
 
-// Three deterministic checks, run on the rendered answer regardless of what the
-// model claims: homepage-only links, links that never appeared in a search
-// result, and fact lines with no source at all.
-function auditOutput(container, cites) {
-  const searched = new Set(cites.map(c => normUrl(c.url)));
-  let homepage = 0, offSearch = 0, unsourced = 0, offList = 0, socialProfile = 0, socialPost = 0;
+  const social = socialKind(u);
+  // Social is allowed only as a link to the actual post, never an account page.
+  if (social === 'profile') return false;
+  if (social === 'post') return true;
 
-  container.querySelectorAll('a').forEach(a => {
-    let u;
-    try { u = new URL(a.href); } catch (e) { return; }
+  // A domain with no path is an outlet homepage, not an article.
+  if (u.pathname === '' || u.pathname === '/') return false;
 
-    if (!isApprovedHost(u.host)) {
-      offList++;
-      a.classList.add('bare-link');
-      markAfter(a, '⚠ not on source list', 'miss-flag', u.host + ' is not one of the approved outlets — this fact cannot be used.');
-      return;
-    }
-
-    const social = socialKind(u);
-    if (social === 'profile') {
-      socialProfile++;
-      a.classList.add('bare-link');
-      markAfter(a, '⚠ profile, not a post', 'miss-flag',
-        'A quote must link to the specific post or video that contains it, not to an account page.');
-      return;
-    }
-    if (social === 'post') {
-      socialPost++;
-      markAfter(a, '⚠ confirm verified', 'note-flag',
-        'Social source: open it and confirm the account is the official verified one before using the quote. This is the one check the tool cannot make for you.');
-      return;
-    }
-
-    if (u.pathname === '' || u.pathname === '/') {
-      homepage++;
-      a.classList.add('bare-link');
-      a.title = 'Opens the outlet homepage, not an article — this fact was not verified.';
-      markAfter(a, '⚠ homepage', 'bare-flag', 'Opens the outlet homepage, not an article.');
-      return;
-    }
-    // Only meaningful when the search returned citations at all.
-    if (searched.size && !searched.has(normUrl(a.href))) {
-      offSearch++;
-      a.classList.add('bare-link');
-      markAfter(a, '⚠ not from search', 'miss-flag', 'This URL did not come back from a search result — open it before using the fact.');
-    }
+  // The URL has to be one the search actually returned, not one the model wrote
+  // from memory. Skipped when the response carried no citations at all.
+  if (!cites.length) return true;
+  const n = normUrl(href);
+  return cites.some(c => {
+    const m = normUrl(c.url);
+    return m === n || m.startsWith(n) || n.startsWith(m);
   });
+}
+
+// Walks the rendered answer and removes every line that does not meet the
+// standard: no source, a source off the approved list, a homepage link, a
+// social profile link, or a URL that never came back from a search. Sections
+// left with nothing are removed entirely. No flags, no warnings in the output.
+function filterOutput(container, cites) {
+  let dropped = 0;
 
   container.querySelectorAll('.block').forEach(block => {
-    const title = block.querySelector('.block-title');
-    if (!title || !SOURCED_SECTION_RE.test(title.textContent)) return;
+    const titleEl = block.querySelector('.block-title');
+    const title = titleEl ? titleEl.textContent : '';
+    const needsSource = SOURCED_SECTION_RE.test(title);
     const p = block.querySelector('p');
     if (!p) return;
-    const parts = p.innerHTML.split(/<br\s*\/?>/i);
-    let touched = false;
-    const rebuilt = parts.map(frag => {
+
+    const kept = p.innerHTML.split(/<br\s*\/?>/i).filter(frag => {
       const plain = frag.replace(/<[^>]*>/g, '').trim();
-      if (plain.length < 25) return frag;                 // headings, spacers
-      if (/NOT FOUND/i.test(plain)) return frag;          // honest empty section
-      if (/<a[\s>]/i.test(frag)) return frag;             // has a link
-      touched = true; unsourced++;
-      return frag + ' <span class="miss-flag" title="No source attached — treat as unverified and do not publish as written.">⚠ no source</span>';
+      if (!plain) return false;
+      if (plain.length < 25) return true;                    // sub-headings, spacers
+      if (/NOT FOUND/i.test(plain)) { dropped++; return false; }
+
+      const hrefs = [];
+      frag.replace(/href="([^"]+)"/gi, (m, h) => { hrefs.push(h); return m; });
+
+      if (!hrefs.length) {
+        if (needsSource) { dropped++; return false; }        // a claim with no source
+        return true;                                         // summary / angles: no claim of fact
+      }
+      if (hrefs.some(h => !linkPasses(h, cites))) { dropped++; return false; }
+      return true;
     });
-    if (touched) p.innerHTML = rebuilt.join('<br>');
+
+    const substantive = kept.filter(f => f.replace(/<[^>]*>/g, '').trim().length >= 25);
+    if (!substantive.length) { block.remove(); return; }
+    p.innerHTML = kept.join('<br>');
   });
 
-  const total = homepage + offSearch + unsourced + offList + socialProfile;
-  const bar = document.createElement('div');
-  const socialNote = socialPost
-    ? '<br>' + socialPost + ' social source(s) marked "confirm verified" — the tool cannot see a verification badge, so open each one and check the account yourself.'
-    : '';
-  if (!total) {
-    bar.className = 'audit-summary clean';
-    bar.innerHTML = '✓ Every fact line carries a source, every source is on the approved list, and every link came back from a live search.' + socialNote;
-  } else {
-    bar.className = 'audit-summary';
-    const bits = [];
-    if (unsourced) bits.push(unsourced + ' line(s) with no source at all');
-    if (offList) bits.push(offList + ' link(s) to an outlet that is NOT on the approved list');
-    if (socialProfile) bits.push(socialProfile + ' social link(s) pointing at an account page instead of the actual post');
-    if (homepage) bits.push(homepage + ' link(s) pointing at an outlet homepage');
-    if (offSearch) bits.push(offSearch + ' link(s) that did not come back from a search result');
-    bar.innerHTML = '⚠ ' + total + ' item(s) failed the source check: ' + bits.join('; ')
-      + '.<br>Flagged material is unverified — open the link or delete the fact before publishing.' + socialNote;
+  if (dropped) {
+    const note = document.createElement('div');
+    note.className = 'omit-note';
+    note.textContent = dropped + ' item(s) without an approved source were left out.';
+    container.appendChild(note);
   }
-  container.insertBefore(bar, container.firstChild);
-}
-
-function renderCitations(cites) {
-  if (!cites.length) return '';
-  let html = '<div class="block"><div class="block-title">🔗 Article links returned by the search</div><div class="cites">';
-  cites.forEach(c => {
-    html += '<a href="' + escapeHtml(c.url) + '" target="_blank" rel="noopener">'
-      + '<span class="cite-title">' + escapeHtml(c.title) + '</span><br>' + escapeHtml(c.url) + '</a>';
-  });
-  return html + '</div></div>';
 }
 
 async function runAmoLookup(input, output) {
@@ -755,9 +711,8 @@ function renderContent(text) {
 
 function copyResult() {
   const main = document.getElementById('resultContent').innerText;
-  const cites = document.getElementById('citeContent').innerText;
   const amo = document.getElementById('amoContent').innerText;
-  const text = [main, cites, amo].filter(t => t.trim()).join('\n\n');
+  const text = [main, amo].filter(t => t.trim()).join('\n\n');
   navigator.clipboard.writeText(text).then(() => {
     const btn = document.querySelectorAll('.tool-btn')[0];
     btn.textContent = 'Copied';
@@ -769,7 +724,6 @@ function resetTool() {
   document.getElementById('inputText').value = '';
   document.getElementById('output').style.display = 'none';
   document.getElementById('resultContent').innerHTML = '';
-  document.getElementById('citeContent').innerHTML = '';
   document.getElementById('amoContent').innerHTML = '';
   document.getElementById('status').innerHTML = '';
   document.getElementById('inputText').focus();
