@@ -15,19 +15,11 @@ export default async function handler(req, res) {
   }
   try {
     const { use_amo_es, ...payload } = req.body || {};
-
-    // Beta flags are collected in a list and sent as one comma-separated header.
-    // web-fetch is needed by the enrichment call, which uses the web_fetch tool
-    // to open an article and read the links inside it — that is how the tool
-    // reaches the original source instead of whoever repeated it.
-    const betas = ['web-fetch-2025-09-10'];
-
     const headers = {
       'Content-Type': 'application/json',
       'x-api-key': process.env.ANTHROPIC_API_KEY,
       'anthropic-version': '2023-06-01'
     };
-
     // Attach the Elasticsearch MCP server only for the archive lookup call.
     if (use_amo_es) {
       if (!process.env.AMO_ES_MCP_URL) {
@@ -38,11 +30,8 @@ export default async function handler(req, res) {
       payload.mcp_servers = [
         { type: 'url', url: process.env.AMO_ES_MCP_URL, name: 'amo-es' }
       ];
-      betas.push('mcp-client-2025-04-04');
+      headers['anthropic-beta'] = 'mcp-client-2025-04-04';
     }
-
-    headers['anthropic-beta'] = betas.join(',');
-
     const upstream = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers,
