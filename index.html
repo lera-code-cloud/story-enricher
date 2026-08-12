@@ -236,6 +236,31 @@ The search tool is hard-restricted at the API level to the approved outlets list
 
 Be aware that a large number of the approved outlets block the search crawler and are therefore unreachable from this tool — People, US Weekly, Page Six, NY Post, Daily Mail, The Sun, Daily Mirror, Metro, Entertainment Weekly, Vanity Fair, Vulture, New York Magazine, PopSugar, The Cut, Business Insider, The New York Times, Reuters, The Wall Street Journal, USA Today, The Guardian, BBC, The Independent, Politico, Los Angeles Times, Chicago Tribune, Vogue, Elle, GQ, Esquire, Cosmopolitan, Glamour, Harper's Bazaar, InStyle, Allure, Town & Country, Pitchfork, Genius, AP Images and most state-level regional papers among them. You will simply never see results from these, and that is expected — it is not a reason to reproduce their reporting from memory, to attribute a fact to them anyway, or to treat the story as unreported. Work with the outlets that do come back: TMZ, E! News, Entertainment Tonight, HollywoodLife, The Blast, Closer Weekly, The Hollywood Reporter, Variety, Deadline, Billboard, WWD, Parade, Extra, Access Hollywood, Yahoo Entertainment, Today, Good Morning America, Hello!, Rolling Stone, CNN, Fox News, NBC News, ABC News, CBS News, The Washington Post, Newsweek, Time, NPR, IMDb, CourtListener and Law & Crime.
 
+**Source hierarchy — cite where it came from, not who repeated it**
+
+Almost everything you find is a retelling. Your job is to hand the researcher the place a fact FIRST appeared, not the outlet that summarised it afterwards.
+
+  TIER 0 — the artifact itself. The podcast episode, the YouTube video, the magazine essay, the court filing, the press release, the person's own verified post. Cite this whenever it exists and you can reach a working URL.
+
+  TIER 1 — the outlet that did the work. If a quote came from an interview, the publication that CONDUCTED that interview is the source. Not whoever wrote it up an hour later.
+
+  TIER 2 — a retelling. Acceptable only when Tier 0 and Tier 1 are genuinely unreachable, and it must be labelled honestly: Source: [Origin](origin-url), via [Outlet](outlet-url)
+
+**How to find the origin — mandatory procedure**
+
+You have a web_fetch tool in addition to web_search. Search alone returns only snippets; the link to the original almost always sits inside the article body, which you can only see by fetching it.
+
+1. When a search result carries a fact you intend to use, web_fetch that article and read its body before you write the line.
+2. Hunt for attribution language, and take the link attached to it: "told X", "in an interview with X", "said on the X podcast", "in a May 31 essay for X", "recalled in a 2021 interview", "per X", "speaking to X", "according to X", "first reported by X". In practice these phrases are hyperlinked to the original. That link is your real source.
+3. web_fetch that link. If it loads and contains the fact, cite THAT url.
+4. If the origin is paywalled, blocked, or fails to load, still name it — cite it in the \`via\` format above with the reachable retelling as the mirror. Never silently downgrade to the retelling as if it were the origin.
+5. For a quote from a podcast, find the episode itself on Apple Podcasts, Spotify or YouTube and link the individual episode page — not the show page. These platforms are reachable, so a podcast quote sourced to a gossip site is a failure, not a compromise.
+6. Same for anything the person said themselves: their own verified post, reel or video is Tier 0 and is reachable. Prefer it over any write-up of it.
+
+Never cite an outlet for a quote that the outlet itself attributes to somebody else's interview. That is the single most common failure in this job and the one this tool exists to prevent.
+
+If an article gives no attribution at all for a claim, that makes the claim weaker, not stronger. An unattributed retelling does not become primary just because it happens to be reachable.
+
 Respond with the following structure — always in English:
 ---
 **📌 Story summary**
@@ -270,6 +295,8 @@ Apply whichever of the following sub-sections are relevant to the story:
 ---
 **📚 Approved sources only**
 Every fact, date, death, case, event, quote, or statistic you cite MUST come from one of the outlets listed below. Do not cite, reference, or imply any outlet that is not on this list. If you cannot attribute a fact to one of these outlets, omit that fact entirely rather than guess, generalize, or substitute a different source.
+
+The one deliberate exception is a Tier 0 primary source that an approved outlet itself links to — a podcast episode page, a court document, an official press release, a verified social post. If an approved article you fetched points at it, you may cite it directly, because the outlet is vouching for it.
 
 Approved outlets:
 
@@ -322,10 +349,9 @@ Rules:
 - Be specific and factual. No vague filler.
 - If a URL is provided, treat it as the primary story and search around it for everything else.
 - Keep each point concise — 1–2 sentences per item.
-- Do not add commentary outside this structure.
-- Every single fact, death, date, case, event, quote, or statistic MUST have a source attached, that source must be one of the approved outlets listed above, and the link must be the exact article URL that web_search returned for that fact. Format: Source: [Publication name](https://full-article-url) — the hyperlink is mandatory every time. Never write a bare publication name with no link.
+- Every single fact, death, date, case, event, quote, or statistic MUST have a source attached, that source must be the origin of the information wherever you could reach it, and the link must be an exact article URL that web_search or web_fetch actually returned. Format when the origin is reachable: Source: [Origin](https://full-article-url). Format when it is not: Source: [Origin](https://origin-url), via [Outlet](https://outlet-url). The hyperlink is mandatory every time — never a bare publication name.
 - NEVER link to a homepage, a section page, a tag page, an author page, or a search results page. A URL that is only a domain — https://www.tmz.com, https://people.com, https://www.foxnews.com — is forbidden and counts as a broken source. If web_search did not give you a specific article URL from an approved outlet for a fact, DELETE that fact from your answer. Deleting the fact is always the correct choice; linking to a homepage never is.
-- Never guess, shorten, edit, reconstruct, or invent a URL, and never paste a URL you did not receive from a search result. Copy article URLs exactly as returned.
+- Never guess, shorten, edit, reconstruct, or invent a URL, and never paste a URL you did not receive from a search result or read inside a page you fetched. Copy article URLs exactly as returned.
 - If you are listing multiple people or events in one section, each individual item must have its own source with its own article link on the same line.
 - Every section heading must appear in the response, but a section's CONTENT is never mandatory. If your searches produced no sourced material for a section, write exactly this under that heading and nothing else: NOT FOUND — no approved outlet has published this. Never pad a section with generic, inferred, or plausible-sounding filler in order to complete the structure. A section marked NOT FOUND is a correct, acceptable answer; an invented section is a failure.
 - The one exception is the optional Celebrity appearance & style intelligence section: when the story is not about a celebrity's looks, outfit, beauty, or body, omit that section completely — no heading, no NOT FOUND line, nothing. The same applies to its individual sub-sections: include only the ones that apply and silently leave out the rest. Never announce that a section does not apply.
@@ -429,20 +455,38 @@ function textOf(data) {
   return (data.content || []).filter(b => b.type === "text").map(b => b.text).join("");
 }
 
-// Every article URL the search actually returned, so a writer always has real
-// links even if the model formatted its own badly.
-function citationsOf(data) {
-  const out = [], seen = new Set();
+// Every URL the tools actually saw. Two categories, and the difference matters:
+//   cites — what search returned, or what fetch pulled down as a document;
+//   body  — links found INSIDE a fetched article. This is where the pointers to
+//           primary sources live (the "told X", "in an essay for X", "recalled
+//           in a 2021 interview" hyperlinks). The old citationsOf() never saw
+//           these, so the filter silently deleted every correctly-sourced line.
+function knownUrls(data) {
+  const cites = new Set();
+  const body = new Set();
+
   (data.content || []).forEach(b => {
-    if (b.type !== 'text' || !Array.isArray(b.citations)) return;
-    b.citations.forEach(c => {
-      const url = c.url || (c.source && c.source.url);
-      if (!url || seen.has(url)) return;
-      seen.add(url);
-      out.push({ url: url, title: c.title || url });
-    });
+    if (b.type === 'text' && Array.isArray(b.citations)) {
+      b.citations.forEach(c => {
+        const u = c.url || (c.source && c.source.url);
+        if (u) cites.add(u);
+      });
+    }
+    if (b.type === 'web_search_tool_result' && Array.isArray(b.content)) {
+      b.content.forEach(r => { if (r && r.url) cites.add(r.url); });
+    }
+    if (b.type === 'web_fetch_tool_result' && b.content) {
+      if (b.content.url) cites.add(b.content.url);
+      let raw = '';
+      try { raw = JSON.stringify(b.content); } catch (e) { raw = ''; }
+      raw.replace(/https?:\/\/[^\s"'\\<>)\]]+/g, u => {
+        body.add(u.replace(/[.,;:]+$/, ''));
+        return u;
+      });
+    }
   });
-  return out;
+
+  return { cites: Array.from(cites), body: Array.from(body) };
 }
 
 function runResearch() {
@@ -458,7 +502,7 @@ function runResearch() {
   output.style.display = 'none';
   document.getElementById('resultContent').innerHTML = '';
   document.getElementById('amoContent').innerHTML = '';
-  status.innerHTML = 'Searching the web <span class="dot"></span><span class="dot"></span><span class="dot"></span>';
+  status.innerHTML = 'Searching and tracing sources <span class="dot"></span><span class="dot"></span><span class="dot"></span>';
 
   // Both calls run in parallel — the archive lookup is slower, so it fills in after.
   const enrich = runEnrichment(input, status, output, btn);
@@ -486,8 +530,22 @@ async function callWithSearch(base) {
   for (let attempt = 1; attempt <= 4; attempt++) {
     const tool = { type: "web_search_20250305", name: "web_search", max_uses: 12 };
     if (domains.length) tool.allowed_domains = domains;
+
+    // Deliberately WITHOUT allowed_domains: the whole point of fetch is to reach
+    // the origin, which may well live off the approved list (a podcast host, a
+    // studio newsroom, a court docket). The model can only fetch a URL that has
+    // already appeared in context, and what actually reaches the output is
+    // decided by the client-side filter below.
+    const fetchTool = {
+      type: "web_fetch_20250910",
+      name: "web_fetch",
+      max_uses: 10,
+      max_content_tokens: 30000,
+      citations: { enabled: true }
+    };
+
     try {
-      const data = await callApi(Object.assign({}, base, { tools: [tool] }));
+      const data = await callApi(Object.assign({}, base, { tools: [tool, fetchTool] }));
       console.info('[story-enricher] search ran across ' + domains.length + ' approved, reachable domains');
       return data;
     } catch (e) {
@@ -520,7 +578,7 @@ async function runEnrichment(input, status, output, btn) {
       html += '<div class="warn-line">⚠ response was cut off by the length limit — some sections may be incomplete</div>';
     }
     box.innerHTML = html + renderContent(textOf(data));
-    filterOutput(box, citationsOf(data));
+    filterOutput(box, knownUrls(data));
 
     output.style.display = 'block';
     status.innerHTML = '';
@@ -567,14 +625,29 @@ function socialKind(u) {
   return SOCIAL_POST_PATTERNS[key].test(target) ? 'post' : 'profile';
 }
 
+function urlMatches(href, list) {
+  const n = normUrl(href);
+  return list.some(c => {
+    const m = normUrl(c);
+    return m === n || m.startsWith(n) || n.startsWith(m);
+  });
+}
+
 // Does this link meet the source standard? Anything that fails is dropped
 // silently along with the sentence that leaned on it.
-function linkPasses(href, cites) {
+function linkPasses(href, known) {
   let u;
   try { u = new URL(href); } catch (e) { return false; }
 
-  // Must be one of the approved outlets.
-  if (!isApprovedHost(u.host)) return false;
+  const inCites = urlMatches(href, known.cites);
+  const inBody = urlMatches(href, known.body);
+  const approved = isApprovedHost(u.host);
+
+  // A domain outside the approved list gets through in exactly one case: an
+  // approved article the tool actually fetched links to it. The outlet is
+  // vouching for it, not the model. Without this rule every Tier 0 source — the
+  // podcast episode, the court document, the official release — would be cut.
+  if (!approved && !inBody) return false;
 
   const social = socialKind(u);
   // Social is allowed only as a link to the actual post, never an account page.
@@ -584,21 +657,18 @@ function linkPasses(href, cites) {
   // A domain with no path is an outlet homepage, not an article.
   if (u.pathname === '' || u.pathname === '/') return false;
 
-  // The URL has to be one the search actually returned, not one the model wrote
-  // from memory. Skipped when the response carried no citations at all.
-  if (!cites.length) return true;
-  const n = normUrl(href);
-  return cites.some(c => {
-    const m = normUrl(c.url);
-    return m === n || m.startsWith(n) || n.startsWith(m);
-  });
+  // The URL has to be one the tools actually saw, not one the model wrote from
+  // memory. Skipped when the response carried no URLs at all.
+  if (!known.cites.length && !known.body.length) return true;
+  return inCites || inBody;
 }
 
 // Walks the rendered answer and removes every line that does not meet the
 // standard: no source, a source off the approved list, a homepage link, a
-// social profile link, or a URL that never came back from a search. Sections
-// left with nothing are removed entirely. No flags, no warnings in the output.
-function filterOutput(container, cites) {
+// social profile link, or a URL that never came back from a search or a fetch.
+// Sections left with nothing are removed entirely. No flags, no warnings in the
+// output.
+function filterOutput(container, known) {
   let dropped = 0;
 
   container.querySelectorAll('.block').forEach(block => {
@@ -621,7 +691,7 @@ function filterOutput(container, cites) {
         if (needsSource) { dropped++; return false; }        // a claim with no source
         return true;                                         // summary / angles: no claim of fact
       }
-      if (hrefs.some(h => !linkPasses(h, cites))) { dropped++; return false; }
+      if (hrefs.some(h => !linkPasses(h, known))) { dropped++; return false; }
       return true;
     });
 
