@@ -58,6 +58,7 @@
 
   /* ---- quiet note when material was filtered out ---- */
   .omit-note { font-size: 11px; color: #4a4540; margin-top: 26px; letter-spacing: .02em; }
+  .syndic { font-size: 10px; color: #c8955a; letter-spacing: .04em; margin-left: 6px; white-space: nowrap; }
   .warn-line { font-size: 12px; color: #c8a870; margin-bottom: 18px; }
 
   /* ---- AMO archive block ---- */
@@ -167,7 +168,7 @@ const APPROVED_DOMAINS = [
   // Broadcast morning shows
   "today.com","goodmorningamerica.com",
   // British royal / celebrity glossies
-  "hellomagazine.com","express.co.uk","dailystar.co.uk",
+  "hellomagazine.com","hola.com","us.hola.com","express.co.uk","dailystar.co.uk",
   // Background / verification tools
   "wikipedia.org","ancestry.com","findagrave.com","legacy.com","genius.com","boxofficemojo.com",
   // Photo / video verification & licensing
@@ -246,6 +247,14 @@ Almost everything you find is a retelling. Your job is to hand the researcher th
 
   TIER 2 — a retelling. Acceptable only when Tier 0 and Tier 1 are genuinely unreachable, and it must be labelled honestly: Source: [Origin](origin-url), via [Outlet](outlet-url)
 
+**The origin must also be an approved outlet**
+
+Tracing a fact back to its origin does not override the approved source list. If the origin turns out to be an outlet that is NOT on the list — RadarOnline, aggregator blogs, celebrity gossip sites you were not given — then that fact is not usable. Do not cite it, not as the origin, not in a via line, not as a bare mention. Either find an approved outlet that reported the same thing independently, or delete the fact.
+
+The single exception is a Tier 0 artifact rather than an outlet: a podcast episode page, a court filing, a government record, an official press release, a verified social post. Those are primary records, and they are usable even when the domain is not on the outlet list.
+
+So the test is not "did I find where this came from" but "did I find where this came from, and is that a place I am allowed to cite". If the answer to the second half is no, the fact goes.
+
 **How to find the origin — mandatory procedure**
 
 You have a web_fetch tool in addition to web_search. Search alone returns only snippets; the link to the original almost always sits inside the article body, which you can only see by fetching it.
@@ -253,9 +262,26 @@ You have a web_fetch tool in addition to web_search. Search alone returns only s
 1. When a search result carries a fact you intend to use, web_fetch that article and read its body before you write the line.
 2. Hunt for attribution language, and take the link attached to it: "told X", "in an interview with X", "said on the X podcast", "in a May 31 essay for X", "recalled in a 2021 interview", "per X", "speaking to X", "according to X", "first reported by X". In practice these phrases are hyperlinked to the original. That link is your real source.
 3. web_fetch that link. If it loads and contains the fact, cite THAT url.
-4. If the origin is paywalled, blocked, or fails to load, still name it — cite it in the \`via\` format above with the reachable retelling as the mirror. Never silently downgrade to the retelling as if it were the origin.
+4. If the origin is an approved outlet but you cannot get a working URL for it — it is paywalled, it blocks the crawler, the fetch fails — you must still NAME it. Write the origin as plain text and link only the outlet you could actually reach:
+   Source: People, via [Fox News](https://www.foxnews.com/entertainment/...)
+   This is mandatory. Quietly presenting the retelling as the source, with no mention of who actually reported it, is the exact failure this tool exists to prevent. A named origin with no link is far more useful to a researcher than a link to whoever repeated it.
+   Only attach a URL to the origin when a search or a fetch actually returned that URL. Never reconstruct it from the outlet's name and the headline.
 5. For a quote from a podcast, find the episode itself on Apple Podcasts, Spotify or YouTube and link the individual episode page — not the show page. These platforms are reachable, so a podcast quote sourced to a gossip site is a failure, not a compromise.
 6. Same for anything the person said themselves: their own verified post, reel or video is Tier 0 and is reachable. Prefer it over any write-up of it.
+
+**Syndication platforms are not publishers**
+
+Some approved domains do not report anything themselves — they republish other outlets' articles whole. Yahoo (yahoo.com, news.yahoo.com, Yahoo Entertainment, Yahoo Style) is the main one you will hit, and MSN, AOL and Microsoft Start behave the same way. An article on one of these is almost never theirs.
+
+Whenever a result sits on one of these platforms:
+
+1. Look at the top of the page for the publisher's logo, brand name, or byline block. On Yahoo it appears above the headline — HOLA!, Hello!, People, Parade, Variety and so on — with the original author's name under it. That publisher is the source, not Yahoo.
+2. web_fetch the page and find the link back to the original: the publisher name in the byline is usually a link, and there is often a "View comments", "Continue reading" or canonical link pointing at the publisher's own URL. Take that URL.
+3. Cite the publisher and its own URL. If you could not recover the publisher's URL, cite it in the via format and name the publisher explicitly: Source: [HOLA!](publisher-url), via [Yahoo Entertainment](yahoo-url) — and if you have no publisher URL at all, still name them: Source: HOLA!, via [Yahoo Entertainment](https://...)
+4. Never write "Source: [Yahoo Entertainment](...)" for an article carrying another outlet's logo. Yahoo hosting a story is not Yahoo reporting it.
+5. The publisher you uncover is still subject to the approved list. If the syndicated article turns out to come from an outlet you are not allowed to cite, drop the fact rather than crediting the platform instead.
+
+The same test applies anywhere else: if the page shows another outlet's brand above the headline, or says "originally published on", or "this article first appeared on", then you are looking at a republication and the named outlet is the source.
 
 Never cite an outlet for a quote that the outlet itself attributes to somebody else's interview. That is the single most common failure in this job and the one this tool exists to prevent.
 
@@ -296,7 +322,7 @@ Apply whichever of the following sub-sections are relevant to the story:
 **📚 Approved sources only**
 Every fact, date, death, case, event, quote, or statistic you cite MUST come from one of the outlets listed below. Do not cite, reference, or imply any outlet that is not on this list. If you cannot attribute a fact to one of these outlets, omit that fact entirely rather than guess, generalize, or substitute a different source.
 
-The one deliberate exception is a Tier 0 primary source that an approved outlet itself links to — a podcast episode page, a court document, an official press release, a verified social post. If an approved article you fetched points at it, you may cite it directly, because the outlet is vouching for it.
+The one deliberate exception is a Tier 0 primary source that an approved outlet itself links to — a podcast episode page, a court document, an official press release, a verified social post. Those are primary records, not outlets, and may be cited directly.
 
 Approved outlets:
 
@@ -320,7 +346,7 @@ Local USA: KTLA 5, ABC7/KABC-TV, NBC4/KNBC, CBS News LA/KCAL, FOX 11/KTTV, NY1, 
 
 Broadcast morning shows: Today Show, Good Morning America, CBS Mornings
 
-British royal/celebrity glossies: Hello!, Daily Express, Daily Star (UK)
+British royal/celebrity glossies: Hello!, ¡HOLA!, Daily Express, Daily Star (UK)
 
 Background/verification tools: Wikipedia (background only, must be corroborated elsewhere), Ancestry, FindAGrave, Legacy.com, Genius, Box Office Mojo
 
@@ -349,7 +375,7 @@ Rules:
 - Be specific and factual. No vague filler.
 - If a URL is provided, treat it as the primary story and search around it for everything else.
 - Keep each point concise — 1–2 sentences per item.
-- Every single fact, death, date, case, event, quote, or statistic MUST have a source attached, that source must be the origin of the information wherever you could reach it, and the link must be an exact article URL that web_search or web_fetch actually returned. Format when the origin is reachable: Source: [Origin](https://full-article-url). Format when it is not: Source: [Origin](https://origin-url), via [Outlet](https://outlet-url). The hyperlink is mandatory every time — never a bare publication name.
+- Every single fact, death, date, case, event, quote, or statistic MUST have a source attached, that source must be the origin of the information wherever you could reach it, and the link must be an exact article URL that web_search or web_fetch actually returned. Format when the origin is reachable: Source: [Origin](https://full-article-url). Format when it is not: Source: [Origin](https://origin-url), via [Outlet](https://outlet-url), or Source: Origin name, via [Outlet](https://outlet-url) when no origin URL exists. At least one working hyperlink is mandatory every time — never a bare publication name on its own.
 - NEVER link to a homepage, a section page, a tag page, an author page, or a search results page. A URL that is only a domain — https://www.tmz.com, https://people.com, https://www.foxnews.com — is forbidden and counts as a broken source. If web_search did not give you a specific article URL from an approved outlet for a fact, DELETE that fact from your answer. Deleting the fact is always the correct choice; linking to a homepage never is.
 - Never guess, shorten, edit, reconstruct, or invent a URL, and never paste a URL you did not receive from a search result or read inside a page you fetched. Copy article URLs exactly as returned.
 - If you are listing multiple people or events in one section, each individual item must have its own source with its own article link on the same line.
@@ -533,7 +559,7 @@ async function callWithSearch(base) {
 
     // Deliberately WITHOUT allowed_domains: the whole point of fetch is to reach
     // the origin, which may well live off the approved list (a podcast host, a
-    // studio newsroom, a court docket). The model can only fetch a URL that has
+    // court docket, a press release). The model can only fetch a URL that has
     // already appeared in context, and what actually reaches the output is
     // decided by the client-side filter below.
     const fetchTool = {
@@ -625,6 +651,39 @@ function socialKind(u) {
   return SOCIAL_POST_PATTERNS[key].test(target) ? 'post' : 'profile';
 }
 
+// Approved domains that do not report anything themselves — they republish other
+// outlets' work whole. They stay approved as a place to read a story, but they
+// are never the source of one.
+const SYNDICATION_HOSTS = ["yahoo.com","msn.com","aol.com","news.google.com"];
+
+function isSyndicationHost(href) {
+  let host;
+  try { host = new URL(href).host.replace(/^www\./, '').toLowerCase(); }
+  catch (e) { return false; }
+  return SYNDICATION_HOSTS.some(d => host === d || host.endsWith('.' + d));
+}
+
+// Tier 0 outside the editorial list — NOT other outlets, but the artifacts
+// themselves: the recording, the filing, the official statement. Only these may
+// pass APPROVED_DOMAINS, and only when the tools actually saw them. Another
+// publication never qualifies: an aggregator linking to a site does not make
+// that site an approved source. (This is what let RadarOnline through before.)
+const PRIMARY_ORIGIN_DOMAINS = [
+  // podcast hosting / distribution
+  "megaphone.fm","simplecast.com","libsyn.com","buzzsprout.com","podbean.com",
+  "art19.com","omny.fm","acast.com","captivate.fm","transistor.fm","redcircle.com",
+  "iheart.com","audacy.com","pca.st","overcast.fm","soundcloud.com",
+  // press release wires
+  "prnewswire.com","businesswire.com","globenewswire.com","newswire.ca"
+];
+
+function isPrimaryOriginHost(host) {
+  host = String(host || '').replace(/^www\./, '').toLowerCase();
+  // Any government or court domain is a primary record by definition.
+  if (/(^|\.)gov$/.test(host) || /(^|\.)courts?\./.test(host)) return true;
+  return PRIMARY_ORIGIN_DOMAINS.some(d => host === d || host.endsWith('.' + d));
+}
+
 function urlMatches(href, list) {
   const n = normUrl(href);
   return list.some(c => {
@@ -643,11 +702,13 @@ function linkPasses(href, known) {
   const inBody = urlMatches(href, known.body);
   const approved = isApprovedHost(u.host);
 
-  // A domain outside the approved list gets through in exactly one case: an
-  // approved article the tool actually fetched links to it. The outlet is
-  // vouching for it, not the model. Without this rule every Tier 0 source — the
-  // podcast episode, the court document, the official release — would be cut.
-  if (!approved && !inBody) return false;
+  // Off the approved list: allowed only if it is a primary artifact (recording,
+  // document, release) AND the tools genuinely saw it. Another outlet never
+  // passes here, no matter who linked to it.
+  if (!approved) {
+    if (!isPrimaryOriginHost(u.host)) return false;
+    if (!inBody && !inCites) return false;
+  }
 
   const social = socialKind(u);
   // Social is allowed only as a link to the actual post, never an account page.
@@ -666,10 +727,12 @@ function linkPasses(href, known) {
 // Walks the rendered answer and removes every line that does not meet the
 // standard: no source, a source off the approved list, a homepage link, a
 // social profile link, or a URL that never came back from a search or a fetch.
-// Sections left with nothing are removed entirely. No flags, no warnings in the
-// output.
+// Lines whose only source is a syndication platform are kept but flagged, since
+// the fact may still be worth having — the researcher just has to find who
+// actually reported it. Sections left with nothing are removed entirely.
 function filterOutput(container, known) {
   let dropped = 0;
+  let syndicated = 0;
 
   container.querySelectorAll('.block').forEach(block => {
     const titleEl = block.querySelector('.block-title');
@@ -678,21 +741,29 @@ function filterOutput(container, known) {
     const p = block.querySelector('p');
     if (!p) return;
 
-    const kept = p.innerHTML.split(/<br\s*\/?>/i).filter(frag => {
+    const kept = [];
+    p.innerHTML.split(/<br\s*\/?>/i).forEach(frag => {
       const plain = frag.replace(/<[^>]*>/g, '').trim();
-      if (!plain) return false;
-      if (plain.length < 25) return true;                    // sub-headings, spacers
-      if (/NOT FOUND/i.test(plain)) { dropped++; return false; }
+      if (!plain) return;
+      if (plain.length < 25) { kept.push(frag); return; }   // sub-headings, spacers
+      if (/NOT FOUND/i.test(plain)) { dropped++; return; }
 
       const hrefs = [];
       frag.replace(/href="([^"]+)"/gi, (m, h) => { hrefs.push(h); return m; });
 
       if (!hrefs.length) {
-        if (needsSource) { dropped++; return false; }        // a claim with no source
-        return true;                                         // summary / angles: no claim of fact
+        if (needsSource) { dropped++; return; }             // a claim with no source
+        kept.push(frag);                                    // summary / angles
+        return;
       }
-      if (hrefs.some(h => !linkPasses(h, known))) { dropped++; return false; }
-      return true;
+      if (hrefs.some(h => !linkPasses(h, known))) { dropped++; return; }
+
+      if (hrefs.every(isSyndicationHost)) {
+        syndicated++;
+        kept.push(frag + ' <span class="syndic">⟳ передрук — знайдіть оригінал</span>');
+        return;
+      }
+      kept.push(frag);
     });
 
     const substantive = kept.filter(f => f.replace(/<[^>]*>/g, '').trim().length >= 25);
@@ -700,10 +771,13 @@ function filterOutput(container, known) {
     p.innerHTML = kept.join('<br>');
   });
 
-  if (dropped) {
+  const parts = [];
+  if (dropped) parts.push(dropped + ' item(s) without an approved source were left out.');
+  if (syndicated) parts.push(syndicated + ' item(s) are sourced to a syndication platform — the original publisher was not resolved.');
+  if (parts.length) {
     const note = document.createElement('div');
     note.className = 'omit-note';
-    note.textContent = dropped + ' item(s) without an approved source were left out.';
+    note.textContent = parts.join(' ');
     container.appendChild(note);
   }
 }
