@@ -197,10 +197,12 @@ const APPROVED_HOSTS = APPROVED_DOMAINS.map(d => d.toLowerCase());
 // so they have to be excluded from the search restriction. They stay on
 // APPROVED_DOMAINS above — a researcher can still cite them by hand — but this
 // tool cannot retrieve or verify anything from them.
-// Verified against the API's own error response on 2026-07-28.
+// Verified against the API's own error response on 2026-07-28;
+// nola.com and threads.net added 2026-08-18 from a live 400.
 // ---------------------------------------------------------------------------
 const SEARCH_BLOCKED_DOMAINS = [
   "al.com","allure.com","apimages.com","argusleader.com","azcentral.com","bbc.co.uk","bbc.com",
+  "nola.com","threads.net",
   "burlingtonfreepress.com","businessinsider.com","chicagotribune.com","clarionledger.com",
   "cleveland.com","cosmopolitan.com","courant.com","courier-journal.com","dailymail.co.uk",
   "dailystar.co.uk","dallasnews.com","delawareonline.com","denverpost.com","desmoinesregister.com",
@@ -234,7 +236,7 @@ You have a web_search tool. Use it before you write anything, every single time,
 
 The search tool is hard-restricted at the API level to the approved outlets listed below: it is technically incapable of returning a result from any other website. Two consequences follow, and both matter. First, you never need to judge whether a source is allowed — if it came back from a search, it is approved. Second, if a search returns nothing, that does NOT mean you should look elsewhere, work around it, or supply the information yourself; it means no approved outlet has published this, and the honest answer is NOT FOUND. Never name an outlet you did not receive a result from, even one on the list.
 
-Be aware that a large number of the approved outlets block the search crawler and are therefore unreachable from this tool — People, US Weekly, Page Six, NY Post, Daily Mail, The Sun, Daily Mirror, Metro, Entertainment Weekly, Vanity Fair, Vulture, New York Magazine, PopSugar, The Cut, Business Insider, The New York Times, Reuters, The Wall Street Journal, USA Today, The Guardian, BBC, The Independent, Politico, Los Angeles Times, Chicago Tribune, Vogue, Elle, GQ, Esquire, Cosmopolitan, Glamour, Harper's Bazaar, InStyle, Allure, Town & Country, Pitchfork, Genius, AP Images and most state-level regional papers among them. You will simply never see results from these, and that is expected — it is not a reason to reproduce their reporting from memory, to attribute a fact to them anyway, or to treat the story as unreported. Work with the outlets that do come back: TMZ, E! News, Entertainment Tonight, HollywoodLife, The Blast, Closer Weekly, The Hollywood Reporter, Variety, Deadline, Billboard, WWD, Parade, Extra, Access Hollywood, Yahoo Entertainment, Today, Good Morning America, Hello!, Rolling Stone, CNN, Fox News, NBC News, ABC News, CBS News, The Washington Post, Newsweek, Time, NPR, IMDb, CourtListener and Law & Crime.
+Many outlets on the approved list block the search crawler and are unreachable from this tool — People, US Weekly, Page Six, NY Post, Daily Mail, The Sun, Entertainment Weekly, Vanity Fair, The New York Times, Reuters, USA Today, The Guardian, BBC, Vogue and most state-level regional papers among them. You will never see results from them, and that is expected. It is never a reason to reproduce their reporting from memory, to attribute a fact to them anyway, or to treat the story as unreported. Work with whatever outlets do come back.
 
 Respond with the following structure — always in English:
 ---
@@ -268,43 +270,8 @@ Apply whichever of the following sub-sections are relevant to the story:
 - **Photo set analysis** *(use when the input is a list of photo URLs with no accompanying text)* — Analyze the visual content of the provided photos and identify: the occasion or context, key style elements, any notable details (jewelry, makeup, body language, setting), and interesting facts or comparisons that could serve as editorial captions or story hooks.
 
 ---
-**📚 Approved sources only**
-Every fact, date, death, case, event, quote, or statistic you cite MUST come from one of the outlets listed below. Do not cite, reference, or imply any outlet that is not on this list. If you cannot attribute a fact to one of these outlets, omit that fact entirely rather than guess, generalize, or substitute a different source.
-
-Approved outlets:
-
-Legal & primary records: PACER, CourtListener, Justia, UniCourt, judyrecords, Law & Crime, Court TV, The Marshall Project, Oxygen, Investigation Discovery
-
-Podcasts / interviews: Apple Podcasts, Spotify Podcasts, IMDb
-
-National wire & major news: Reuters, The New York Times, The Washington Post, The Wall Street Journal, USA Today, NPR, PBS NewsHour, CNN, NBC News, ABC News, CBS News, Fox News, BBC, The Guardian, The Independent, Newsweek, Time, Politico, Axios, The Hill, Los Angeles Times, Chicago Tribune, Forbes Entertainment, CNBC Media
-
-Entertainment trade publications: The Hollywood Reporter, Variety, Deadline, The Wrap, IndieWire, Billboard, WWD
-
-Celebrity/entertainment news: People, US Weekly, Entertainment Tonight, E! News, TMZ, Extra, Access Hollywood, Parade, Yahoo Entertainment, Vanity Fair, Vulture, New York Magazine, Entertainment Weekly, Business Insider, Daily Beast, BuzzFeed News archive, Vice
-
-Tabloid / gossip: Daily Mail, Page Six, NY Post, CloserWeekly, The Blast, HollywoodLife
-
-UK / international tabloid: The Sun (UK), The U.S. Sun, Daily Mirror, Metro UK, Heat World, Grazia
-
-Fashion & lifestyle glossies: Vogue, GQ, Esquire, Marie Claire, Elle, Harper's Bazaar, InStyle, Glamour, Cosmopolitan, Allure, Interview, Rolling Stone, W Magazine, Town & Country, The Cut, PopSugar, Refinery29, Essence, Bustle, The Face, i-D, Highsnobiety, The Daily Front Row, Complex, XXL, HipHopDX
-
-Local USA: KTLA 5, ABC7/KABC-TV, NBC4/KNBC, CBS News LA/KCAL, FOX 11/KTTV, NY1, ABC7NY/WABC, NBC New York/WNBC, CBS News New York, New York Daily News, amNewYork, Chicago Sun-Times, WGN9 Chicago, Miami Herald, WSVN 7 Miami, San Francisco Chronicle, KRON4 San Francisco, Atlanta Journal-Constitution, WSB-TV Atlanta, Las Vegas Review-Journal, Houston Chronicle, Dallas Morning News, Boston Globe, Philadelphia Inquirer, Seattle Times, Denver Post, ESPN, Sports Illustrated
-
-Broadcast morning shows: Today Show, Good Morning America, CBS Mornings
-
-British royal/celebrity glossies: Hello!, Daily Express, Daily Star (UK)
-
-Background/verification tools: Wikipedia (background only, must be corroborated elsewhere), Ancestry, FindAGrave, Legacy.com, Genius, Box Office Mojo
-
-Photo/video verification & licensing: Getty Images, AP Images, Backgrid, Shutterstock Editorial
-
-TV/soap/industry trade: TVLine, Soap Opera Digest, TV Guide
-
-Music trade: Pitchfork, Spin, NME
-
-State-level flagship outlet (one per US state, use for regional news matching that state):
-Alabama: AL.com; Alaska: Anchorage Daily News; Arizona: The Arizona Republic; Arkansas: Arkansas Democrat-Gazette; California: Los Angeles Times; Colorado: The Denver Post; Connecticut: Hartford Courant; Delaware: Delaware Online/The News Journal; Florida: Miami Herald; Georgia: The Atlanta Journal-Constitution; Hawaii: Honolulu Star-Advertiser; Idaho: Idaho Statesman; Illinois: Chicago Tribune; Indiana: The Indianapolis Star; Iowa: The Des Moines Register; Kansas: The Wichita Eagle; Kentucky: Louisville Courier-Journal; Louisiana: The Times-Picayune/NOLA.com, The Advocate; Maine: Portland Press Herald; Maryland: The Baltimore Sun; Massachusetts: The Boston Globe; Michigan: Detroit Free Press; Minnesota: Star Tribune; Mississippi: The Clarion-Ledger; Missouri: St. Louis Post-Dispatch; Montana: Billings Gazette; Nebraska: Omaha World-Herald; Nevada: Las Vegas Review-Journal; New Hampshire: New Hampshire Union Leader; New Jersey: NJ.com/The Star-Ledger; New Mexico: Albuquerque Journal; New York: New York Post (capital coverage: Times Union, Albany); North Carolina: The News & Observer; North Dakota: Bismarck Tribune; Ohio: Cleveland.com/The Plain Dealer; Oklahoma: The Oklahoman; Oregon: The Oregonian; Pennsylvania: The Philadelphia Inquirer; Rhode Island: The Providence Journal; South Carolina: The Post and Courier; South Dakota: Argus Leader; Tennessee: The Tennessean; Texas: Houston Chronicle; Utah: The Salt Lake Tribune; Vermont: Burlington Free Press; Virginia: Richmond Times-Dispatch; Washington: The Seattle Times; West Virginia: Charleston Gazette-Mail; Wisconsin: Milwaukee Journal Sentinel; Wyoming: Casper Star-Tribune; Washington, D.C.: The Washington Post
+**📚 Sourcing**
+Every fact, date, death, case, event, quote, or statistic you cite MUST come from a result the search tool actually returned. The tool is hard-restricted to the approved outlet list at the API level, so anything that comes back is by definition an approved outlet and there is no list for you to check against. If you cannot attribute a fact to something a search returned, omit that fact entirely rather than guess, generalize, or substitute a different source.
 
 Official verified social accounts (primary — celebrity's/rep's own words, for direct quotes only): Instagram, Threads, X (Twitter), TikTok, Facebook, YouTube — verified/official accounts only.
 
@@ -337,6 +304,134 @@ Rules:
 - The Celebrity appearance & style intelligence section is optional and should only appear when the story is clearly about a celebrity's looks, outfit, styling, beauty routine, body, or cosmetic procedures. Skip it entirely for political, business, or non-appearance-related stories.
 - Within the Celebrity appearance & style intelligence section, include only the sub-sections that are directly relevant. Do not force sub-sections that don't apply to the story.`;
 
+// Site id → domain. Lifted out of AMO_SYSTEM_PROMPT: the model returns the raw
+// ids and this builds the URLs, which is both cheaper per run and immune to the
+// model mistyping a domain or forgetting a slug-only exception.
+const SITE_DOMAINS = {
+  2: "amomama.de",
+  3: "amomama.fr",
+  4: "amomama.it",
+  5: "verticaldramaexplorer.com",
+  6: "amomama.us",
+  8: "amomama.com",
+  9: "yourcoolstories.com",
+  10: "amomama.me",
+  14: "celebritist.me",
+  17: "creativecuisinerecipes1.com",
+  19: "amomama.es",
+  20: "stars.amomama.us",
+  23: "es.amomama.com",
+  24: "news.amomama.com",
+  25: "amomama.io",
+  26: "amomama.net",
+  27: "amomama.info",
+  29: "celebritist.us",
+  31: "stars.celebritist.me",
+  36: "posts.amomama.es",
+  37: "womanlylive.com",
+  38: "amodays.com",
+  39: "thecelebritist.com",
+  40: "fintreat.com",
+  41: "curiosityfacts.com",
+  42: "geeksstory.com",
+  45: "truthtempest.com",
+  46: "deninnovator.com",
+  47: "starryjourneyer.com",
+  48: "creativecuisinerecipe.com",
+  49: "fashiongirlsly.com",
+  50: "amomedia.com",
+  51: "amoplanet.com",
+  52: "after11.pm",
+  53: "retrotreat.com",
+  54: "ossa.tv",
+  55: "factsflare.com",
+  56: "contraspero.com",
+  57: "barabola.com",
+  58: "gogirok.com",
+  59: "ondoho.com",
+  60: "morelimedia.com",
+  61: "ozdomedia.com",
+  62: "contranoche.com",
+  63: "myoneforall.com",
+  64: "thetopselected.com",
+  65: "contradia.com",
+  66: "haydamakas.com",
+  67: "financeply.com",
+  68: "moneytano.com",
+  69: "walletilo.com",
+  70: "healthquix.com",
+  71: "medifacto.com",
+  72: "jobsyro.com",
+  73: "daily.askthis.co",
+  74: "storimia.com",
+  75: "finolivo.com",
+  76: "celebritive.com",
+  77: "saveonix.com",
+  78: "finomira.com",
+  79: "moneyluma.com",
+  80: "cashariva.com",
+  81: "moneyzira.com",
+  82: "healquix.com",
+  83: "medelvo.com",
+  84: "wellistra.com",
+  85: "wellaryx.com",
+  86: "vitavoro.com",
+  87: "worktura.com",
+  88: "jobuvox.com",
+  89: "hiretura.com",
+  90: "affluflex.com",
+  91: "fortunevia.com",
+  92: "fundorio.com",
+  93: "affluvero.com",
+  94: "tripinnsguide.com",
+  95: "techappadvisor.com",
+  96: "innerglowvibe.com",
+  97: "investsurance.com",
+  98: "finvestresource.com",
+  99: "fincoverzone.com",
+  100: "facialcareguide.com",
+  101: "microbiomeskin.com",
+  102: "microbiomeface.com",
+  103: "openhousetips.com",
+  104: "urbanlivinguide.com",
+  105: "opscontrolhub.com",
+  106: "educationskillhub.com",
+  107: "onlinecareersguide.com",
+  108: "carvalueadvisor.com",
+  109: "carbuyinginsight.com",
+  110: "gadgetsandapps.com",
+  111: "travelriskhub.com",
+  112: "tripinsguide.com",
+  113: "homecraftguide.com",
+  114: "lagomvibe.com",
+  115: "finvaultzone.com",
+  116: "finvaulthub.com",
+  117: "facialglowhub.com",
+  118: "fixer-upperhouse.com",
+  119: "opsinsightshub.com",
+  120: "eduskillguide.com",
+  121: "carvaluetips.com",
+  122: "capsulerobe.com",
+  123: "farewatchhub.com",
+  124: "amomama.pl",
+  125: "bylotak.com"
+};
+const SLUG_ONLY_SITES = [37, 39, 45, 46, 47, 48, 55];
+
+function amoWebUrl(a) {
+  const domain = SITE_DOMAINS[a.site_id];
+  if (!domain || !a.slug) return null;
+  if (SLUG_ONLY_SITES.indexOf(Number(a.site_id)) !== -1) {
+    return 'https://' + domain + '/' + a.slug + '/';
+  }
+  if (!a.public_id) return null;
+  return 'https://' + domain + '/' + a.public_id + '-' + a.slug + '.html';
+}
+
+function amoAdminUrl(a) {
+  return a.id ? 'https://amooffice.com/en/cms/posts/' + a.id : null;
+}
+
 const AMO_SYSTEM_PROMPT = `You are the AMO archive scout inside an editorial research tool. A researcher is writing a new article. Your job is to search AMO's own CMS (Elasticsearch) and return the previously published AMO articles that can safely be reused as SECONDARY CONTENT (a background section) inside that specific new article.
 
 You have one tool: the "amo-es" MCP server (Elasticsearch). Index: "posts".
@@ -360,19 +455,8 @@ These rules come from a performance analysis of 12 published articles measured b
 5. Rank remaining candidates: same case/event first (most recent and most detailed first), then same-person-different-storyline.
 6. Return at most 6 candidates. Quality over quantity — returning 2 strong ones is better than padding with weak ones.
 
-## Building the two links (mandatory, both, for every candidate)
-Admin link — always, uses "id" (not public_id):
-https://amooffice.com/en/cms/posts/<id>
-
-Web link — uses "public_id", "slug", and the FIRST id in "sites". Standard format for every domain except the seven listed below:
-https://<domain>/<public_id>-<slug>.html
-Slug-only exception (these seven domains only): https://<domain>/<slug>/
-womanlylive.com (37), thecelebritist.com (39), truthtempest.com (45), deninnovator.com (46), starryjourneyer.com (47), creativecuisinerecipe.com (48), factsflare.com (55)
-Never add UTM or tracking parameters. If "slug" or "public_id" is missing, set web_url to null.
-
-Site id → domain map:
-2:amomama.de, 3:amomama.fr, 4:amomama.it, 5:verticaldramaexplorer.com, 6:amomama.us, 8:amomama.com, 9:yourcoolstories.com, 10:amomama.me, 14:celebritist.me, 17:creativecuisinerecipes1.com, 19:amomama.es, 20:stars.amomama.us, 23:es.amomama.com, 24:news.amomama.com, 25:amomama.io, 26:amomama.net, 27:amomama.info, 29:celebritist.us, 31:stars.celebritist.me, 36:posts.amomama.es, 37:womanlylive.com, 38:amodays.com, 39:thecelebritist.com, 40:fintreat.com, 41:curiosityfacts.com, 42:geeksstory.com, 45:truthtempest.com, 46:deninnovator.com, 47:starryjourneyer.com, 48:creativecuisinerecipe.com, 49:fashiongirlsly.com, 50:amomedia.com, 51:amoplanet.com, 52:after11.pm, 53:retrotreat.com, 54:ossa.tv, 55:factsflare.com, 56:contraspero.com, 57:barabola.com, 58:gogirok.com, 59:ondoho.com, 60:morelimedia.com, 61:ozdomedia.com, 62:contranoche.com, 63:myoneforall.com, 64:thetopselected.com, 65:contradia.com, 66:haydamakas.com, 67:financeply.com, 68:moneytano.com, 69:walletilo.com, 70:healthquix.com, 71:medifacto.com, 72:jobsyro.com, 73:daily.askthis.co, 74:storimia.com, 75:finolivo.com, 76:celebritive.com, 77:saveonix.com, 78:finomira.com, 79:moneyluma.com, 80:cashariva.com, 81:moneyzira.com, 82:healquix.com, 83:medelvo.com, 84:wellistra.com, 85:wellaryx.com, 86:vitavoro.com, 87:worktura.com, 88:jobuvox.com, 89:hiretura.com, 90:affluflex.com, 91:fortunevia.com, 92:fundorio.com, 93:affluvero.com, 94:tripinnsguide.com, 95:techappadvisor.com, 96:innerglowvibe.com, 97:investsurance.com, 98:finvestresource.com, 99:fincoverzone.com, 100:facialcareguide.com, 101:microbiomeskin.com, 102:microbiomeface.com, 103:openhousetips.com, 104:urbanlivinguide.com, 105:opscontrolhub.com, 106:educationskillhub.com, 107:onlinecareersguide.com, 108:carvalueadvisor.com, 109:carbuyinginsight.com, 110:gadgetsandapps.com, 111:travelriskhub.com, 112:tripinsguide.com, 113:homecraftguide.com, 114:lagomvibe.com, 115:finvaultzone.com, 116:finvaulthub.com, 117:facialglowhub.com, 118:fixer-upperhouse.com, 119:opsinsightshub.com, 120:eduskillguide.com, 121:carvaluetips.com, 122:capsulerobe.com, 123:farewatchhub.com, 124:amomama.pl, 125:bylotak.com
-If a site id is not on this map, set web_url to null and put the raw id in "site".
+## Identifying each candidate
+For every candidate return its "id", "public_id", "slug", and "site_id" — where site_id is the FIRST id in the "sites" array. Do not build URLs; the tool constructs them from these four fields.
 
 ## Output
 Reply with ONE valid JSON object and nothing else — no prose before or after, no markdown code fences.
@@ -384,9 +468,9 @@ Reply with ONE valid JSON object and nothing else — no prose before or after, 
       "id": 542936,
       "headline": "exact headline from the CMS",
       "published_at": "2026-05-14",
-      "site": "news.amomama.com",
-      "web_url": "https://news.amomama.com/542936-slug-here.html",
-      "admin_url": "https://amooffice.com/en/cms/posts/542936",
+      "public_id": 542936,
+      "slug": "exact-slug-from-the-cms",
+      "site_id": 24,
       "tier": "same_event",
       "why": "one sentence — which part of the same case or event this article covers",
       "use_as": "one or two sentences — what specifically to lift from it as the background section, naming the story elements worth keeping (timestamps, quotes, the turn)",
@@ -412,6 +496,15 @@ try {
   localStorage.removeItem('storyEnricherAmoPrompt');
 } catch (e) { /* private mode — nothing to clean */ }
 
+// The system prompt and tool list are identical on every turn of the server-side
+// search loop, so marking them cached means they are written once and read back
+// at a tenth of the price for the rest of the run. Both prompts are comfortably
+// over the 1024-token minimum — do not trim them below it or caching silently
+// stops applying.
+function cached(text) {
+  return [{ type: "text", text: text, cache_control: { type: "ephemeral" } }];
+}
+
 async function callApi(payload) {
   const res = await fetch("/api/chat", {
     method: "POST",
@@ -420,6 +513,14 @@ async function callApi(payload) {
   });
   const data = await res.json();
   if (data.error) throw new Error(data.error.message);
+  const u = data.usage;
+  if (u) {
+    console.info('[story-enricher] tokens — in ' + u.input_tokens
+      + ' | cache write ' + (u.cache_creation_input_tokens || 0)
+      + ' | cache read ' + (u.cache_read_input_tokens || 0)
+      + ' | out ' + u.output_tokens
+      + (u.server_tool_use ? ' | searches ' + u.server_tool_use.web_search_requests : ''));
+  }
   return data;
 }
 
@@ -510,7 +611,7 @@ async function runEnrichment(input, status, output, btn) {
     const data = await callWithSearch({
       model: MODEL,
       max_tokens: 8000,
-      system: SYSTEM_PROMPT,
+      system: cached(SYSTEM_PROMPT),
       messages: [{ role: "user", content: input }]
     });
 
@@ -649,7 +750,7 @@ async function runAmoLookup(input, output) {
       use_amo_es: true,
       model: AMO_MODEL,
       max_tokens: 6000,
-      system: AMO_SYSTEM_PROMPT,
+      system: cached(AMO_SYSTEM_PROMPT),
       messages: [{ role: "user", content: "Primary story the researcher is working on:\n\n" + input }]
     });
     const parsed = extractJson(textOf(data));
@@ -700,7 +801,10 @@ function renderAmo(data) {
       + '<div class="amo-badge ' + (sameEvent ? 'badge-same' : 'badge-other') + '">'
       + (sameEvent ? 'Same story' : 'Same person · other story') + '</div></div>';
 
-    const meta = [a.published_at, a.site, a.id ? 'ID ' + a.id : null].filter(Boolean).map(escapeHtml).join(' · ');
+    const webUrl = a.web_url || amoWebUrl(a);
+    const adminUrl = a.admin_url || amoAdminUrl(a);
+    const siteName = a.site || SITE_DOMAINS[a.site_id] || null;
+    const meta = [a.published_at, siteName, a.id ? 'ID ' + a.id : null].filter(Boolean).map(escapeHtml).join(' · ');
     if (meta) html += '<div class="amo-meta">' + meta + '</div>';
 
     if (a.why) html += '<div class="amo-line"><span class="k">Why</span>' + escapeHtml(a.why) + '</div>';
@@ -709,8 +813,8 @@ function renderAmo(data) {
     if (a.repeat_risk) html += '<div class="amo-line warn"><span class="k">Already used</span>' + escapeHtml(a.repeat_risk) + '</div>';
 
     html += '<div class="amo-links">';
-    if (a.web_url) html += '<a href="' + escapeHtml(a.web_url) + '" target="_blank" rel="noopener">Open on site ↗</a>';
-    if (a.admin_url) html += '<a href="' + escapeHtml(a.admin_url) + '" target="_blank" rel="noopener">Open in CMS ↗</a>';
+    if (webUrl) html += '<a href="' + escapeHtml(webUrl) + '" target="_blank" rel="noopener">Open on site ↗</a>';
+    if (adminUrl) html += '<a href="' + escapeHtml(adminUrl) + '" target="_blank" rel="noopener">Open in CMS ↗</a>';
     html += '</div></div>';
   });
 
