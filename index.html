@@ -80,6 +80,22 @@
   .amo-links a { font-size: 12px; padding: 6px 13px; border: 0.5px solid #2e2e2e; border-radius: 8px; color: #9a8f85; text-decoration: none; transition: all .2s; }
   .amo-links a:hover { border-color: #c8b89a; color: #e8e0d8; }
   .amo-empty { font-size: 14px; color: #6b6560; line-height: 1.7; }
+
+  /* ---- locale switcher ---- */
+  .locale-switch { display: flex; align-items: center; gap: 0; border: 0.5px solid #2e2e2e; border-radius: 10px; padding: 3px; background: rgba(18,18,18,0.4); }
+  .loc-btn { background: none; border: none; font-family: inherit; font-size: 12px; letter-spacing: .03em; color: #6b6560; padding: 7px 15px; border-radius: 7px; cursor: pointer; transition: background .2s, color .2s; white-space: nowrap; }
+  .loc-btn:hover { color: #9a8f85; }
+  .loc-btn.active { background: rgba(200,184,154,0.14); color: #c8b89a; }
+  .loc-btn:disabled { opacity: .4; cursor: not-allowed; }
+  .locale-meta { font-size: 11px; color: #4a4540; letter-spacing: .02em; margin-top: 10px; }
+  .locale-meta strong { color: #6b6560; font-weight: 500; }
+  @media (max-width: 620px) {
+    header { padding: 14px 18px; flex-wrap: wrap; gap: 12px; }
+    header span { display: none; }
+    .container { margin: 28px auto; padding: 0 16px; }
+    .input-card { padding: 20px 18px; }
+    .result-card { padding: 24px 20px; }
+  }
 </style>
 </head>
 <body>
@@ -89,6 +105,11 @@
     <div class="logo"><span>SE</span></div>
     <h1>story enricher</h1>
     <span>/ digital media</span>
+  </div>
+  <div class="locale-switch" id="localeSwitch">
+    <button class="loc-btn" data-locale="us" onclick="setLocale('us')">USA</button>
+    <button class="loc-btn" data-locale="de" onclick="setLocale('de')">Germany</button>
+    <button class="loc-btn" data-locale="latam" onclick="setLocale('latam')">LatAm</button>
   </div>
 </header>
 
@@ -101,10 +122,11 @@
       <button id="submitBtn" onclick="runResearch()">Generate</button>
       <label class="toggle" title="Search AMO's own published articles for background you can reuse">
         <input type="checkbox" id="amoToggle" checked>
-        <span>Search AMO archive</span>
+        <span id="amoToggleLabel">Search AMO archive</span>
       </label>
       <div id="status"></div>
     </div>
+    <div class="locale-meta" id="localeMeta"></div>
   </div>
 
   <div id="output">
@@ -126,14 +148,35 @@ const MODEL = "claude-opus-4-6";
 const AMO_MODEL = "claude-opus-4-6";
 
 // ---------------------------------------------------------------------------
-// APPROVED DOMAINS — the hard allowlist.
+// LOCALES
+// ---------------------------------------------------------------------------
+// The tool runs one desk at a time. A locale bundles everything that differs
+// between desks: the approved outlet list, the language the searches are run
+// in, the language filter used on the AMO archive, and the two system prompts.
+// Everything else — the output structure, the source filter, the rendering —
+// is shared and identical for every locale.
+//
+// The answer is ALWAYS written in English, in every locale. Only the searching
+// and the archive lookup change language.
+//
+// TO ADD A NEW DESK (e.g. LatAm):
+//   1. add an EXTRA_DOMAINS array below with the outlets that desk needs;
+//   2. add an entry to LOCALES with label / esLanguage / the three prompt
+//      paragraphs (langBlock, sourceBlock, blockedNote) and amoLangBlock;
+//   3. add one <button class="loc-btn" data-locale="…"> to the header.
+// Nothing else has to change.
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// BASE (US) APPROVED DOMAINS — the hard allowlist for the American desk, and
+// the shared foundation every other desk builds on.
 // This is passed to the search tool as `allowed_domains`, so the model cannot
 // receive results from anywhere else. Bare domains only: no https://, no paths,
 // no wildcards. Subdomains are covered automatically.
-// To add or remove an outlet, edit this array — the names in the prompt are
+// To add or remove an outlet, edit these arrays — the names in the prompt are
 // documentation, THIS is what actually restricts the search.
 // ---------------------------------------------------------------------------
-const APPROVED_DOMAINS = [
+const BASE_DOMAINS = [
   // Legal & primary records
   "pacer.uscourts.gov","courtlistener.com","justia.com","unicourt.com","judyrecords.com",
   "lawandcrime.com","courttv.com","themarshallproject.org","oxygen.com","investigationdiscovery.com",
@@ -189,16 +232,95 @@ const APPROVED_DOMAINS = [
   "instagram.com","threads.net","x.com","twitter.com","tiktok.com","facebook.com","youtube.com","youtu.be"
 ];
 
-const APPROVED_HOSTS = APPROVED_DOMAINS.map(d => d.toLowerCase());
+// ---------------------------------------------------------------------------
+// GERMAN DESK — added on top of BASE_DOMAINS (outlets already present in the
+// base list, and subdomains of them such as sportbild.bild.de or
+// edition.cnn.com, are not repeated here: a bare domain already covers its
+// subdomains).
+// ---------------------------------------------------------------------------
+const DE_EXTRA_DOMAINS = [
+  // German national press & magazines
+  "bild.de","spiegel.de","focus.de","stern.de","welt.de","faz.net","sueddeutsche.de","zeit.de",
+  "t-online.de","n-tv.de","tagesschau.de","tagesspiegel.de","morgenpost.de","jungewelt.de",
+  "bunte.de","gala.de","promipool.de","faktastisch.de","web.de","tvspielfilm.de","joyn.de","rtl.de",
+  // German public broadcasters & regional titles
+  "ardmediathek.de","mdr.de","ndr.de","swr.de","wdr.de","sportschau.de","dw.com",
+  "berliner-kurier.de","derwesten.de","express.de","fr.de","ga.de","hna.de","lvz.de","merkur.de",
+  "nordkurier.de","nw.de","rp-online.de","saechsische.de","tz.de","volksfreund.de",
+  "abendzeitung-muenchen.de","ostseewelle.de","badesalz.de","eurosport.de",
+  // Austria & Switzerland
+  "krone.at","kurier.at","heute.at","oe24.at","blick.ch","20min.ch","bluewin.ch",
+  // European & international, used by the German desk
+  "elpais.com","ilsole24ore.com","ladepeche.fr","belganewsagency.eu","kyivindependent.com",
+  "news.sky.com","theage.com.au","majorcadailybulletin.com","thephuketnews.com","mabumbe.com",
+  "nbcmiami.com","derechadiario.com.ar",
+  // Official / institutional records
+  "berlin.de","polizei.bayern.de","police.nsw.gov.au","deutschebahn.com",
+  "dieter-schwarz-stiftung.de","gofundme.com",
+  // Asset & internal hosts (approved for linking, never searched)
+  "gettyimages.ae","amooffice.com","drive.google.com","postimg.cc"
+];
+
+// ---------------------------------------------------------------------------
+// LATAM DESK — added on top of BASE_DOMAINS. Same rule as the German list:
+// outlets already in the base list, and subdomains of them (edition.cnn.com,
+// cnnespanol.cnn.com, us.marca.com), are not repeated here.
+// The desk writes in Spanish but its beat is the whole region, so the list
+// spans Argentina, Mexico, the Andean countries, Central America, the
+// Caribbean, Spain and the US Hispanic press — plus a few Brazilian titles in
+// Portuguese for stories that cross the border.
+// ---------------------------------------------------------------------------
+const LATAM_EXTRA_DOMAINS = [
+  // Argentina
+  "infobae.com","clarin.com","lanacion.com.ar","a24.com","tn.com.ar","ciudad.com.ar",
+  "caras.perfil.com","revistagente.com","parati.com.ar","paparazzi.com.ar","pronto.com.ar",
+  "eltrecetv.com.ar","viapais.com.ar","cenital.com","datachaco.com","derechadiario.com.ar",
+  // Mexico
+  "milenio.com","excelsior.com.mx","elfinanciero.com.mx","heraldodemexico.com.mx",
+  "diariodemexico.com","proceso.com.mx","publimetro.com.mx","oem.com.mx","vanguardia.com.mx",
+  "unotv.com","lasestrellas.tv","tvnotas.com.mx","quien.com","gq.com.mx",
+  // Andean, Central America & the Caribbean
+  "eltiempo.com","elespectador.com","semana.com","elcolombiano.com","bluradio.com","elcomercio.pe",
+  "larepublica.pe","rpp.pe","radionacional.gob.pe","eluniverso.com","lanacion.com.py",
+  "extra.com.py","listindiario.com","diariolibre.com","observador.cr","ncrnoticias.com","tiempo.hn",
+  "tunota.com","wapa.tv",
+  // Brazil (Portuguese-language)
+  "g1.globo.com","cnnbrasil.com.br","caras.com.br","oliberal.com",
+  // Spain
+  "elpais.com","elmundo.es","elespanol.com","lavanguardia.com","hola.com","lecturas.com",
+  "diezminutos.es","semana.es","marca.com",
+  // US Hispanic press & LatAm-facing English
+  "univision.com","peopleenespanol.com","laopinion.com","latintimes.com","mamaslatinas.com",
+  "remezcla.com","diariolasamericas.com","fox26houston.com","newsnationnow.com",
+  // International titles used by the desk
+  "news.sky.com","skynews.com.au","thetimes.com","timesofindia.indiatimes.com",
+  "economictimes.indiatimes.com","hindustantimes.com","telegrafi.com",
+  // Official / institutional records
+  "cdc.gov","gofundme.com",
+  // Video platform (direct quotes from official channels only)
+  "dailymotion.com",
+  // Asset & internal hosts (approved for linking, never searched)
+  "docs.google.com","google.com","imgur.com","postimg.cc"
+];
+
+// Hosts that are approved for LINKING but must never be handed to the search
+// tool: they are asset stores, image CDNs or internal systems behind a login,
+// so a search restriction that includes them just wastes crawler scope.
+const UTILITY_DOMAINS = [
+  "amooffice.com","drive.google.com","docs.google.com","google.com","imgur.com","postimg.cc"
+];
 
 // ---------------------------------------------------------------------------
 // Domains on the approved list that BLOCK the search crawler. The API rejects
 // the whole request with a 400 if any of these is passed in allowed_domains,
-// so they have to be excluded from the search restriction. They stay on
-// APPROVED_DOMAINS above — a researcher can still cite them by hand — but this
-// tool cannot retrieve or verify anything from them.
+// so they have to be excluded from the search restriction. They stay on the
+// approved list — a researcher can still cite them by hand — but this tool
+// cannot retrieve or verify anything from them.
 // Verified against the API's own error response on 2026-07-28;
 // nola.com and threads.net added 2026-08-18 from a live 400.
+// The German additions have NOT been verified yet: whatever turns out to be
+// blocked is discovered on the first run, remembered in localStorage per
+// locale (see learnedBlocked below), and can then be pasted in here.
 // ---------------------------------------------------------------------------
 const SEARCH_BLOCKED_DOMAINS = [
   "al.com","allure.com","apimages.com","argusleader.com","azcentral.com","bbc.co.uk","bbc.com",
@@ -217,26 +339,174 @@ const SEARCH_BLOCKED_DOMAINS = [
   "wsj.com"
 ];
 
-// What actually gets passed to the search tool: approved AND reachable.
-const SEARCHABLE_DOMAINS = APPROVED_DOMAINS.filter(d => SEARCH_BLOCKED_DOMAINS.indexOf(d) === -1);
+const LOCALES = {
 
-function isApprovedHost(host) {
-  host = String(host || '').replace(/^www\./, '').toLowerCase();
-  return APPROVED_HOSTS.some(d => host === d || host.endsWith('.' + d));
+  us: {
+    id: 'us',
+    label: 'USA',
+    desk: 'the American desk',
+    domains: BASE_DOMAINS,
+    blocked: SEARCH_BLOCKED_DOMAINS,
+    maxSearches: 12,
+    esLanguage: 'en',
+    archiveLabel: 'English',
+    // Ready-to-paste transition lines are written in the language the finished
+    // article is written in. Change this string to 'English' if the desk wants
+    // them in English instead.
+    transitionLanguage: 'English',
+    langBlock: '',
+    sourceBlock: '',
+    blockedNote: 'Many outlets on the approved list block the search crawler and are unreachable from this tool — People, US Weekly, Page Six, NY Post, Daily Mail, The Sun, Entertainment Weekly, Vanity Fair, The New York Times, Reuters, USA Today, The Guardian, BBC, Vogue and most state-level regional papers among them. You will never see results from them, and that is expected. It is never a reason to reproduce their reporting from memory, to attribute a fact to them anyway, or to treat the story as unreported. Work with whatever outlets do come back.',
+    amoLangBlock: 'The archive is searched in English: the researcher writes in English and reuses English-language AMO articles as background.'
+  },
+
+  de: {
+    id: 'de',
+    label: 'Germany',
+    desk: 'the German desk',
+    domains: BASE_DOMAINS.concat(DE_EXTRA_DOMAINS),
+    blocked: SEARCH_BLOCKED_DOMAINS,
+    // Two languages of searching means more queries per story.
+    maxSearches: 16,
+    esLanguage: 'de',
+    archiveLabel: 'German',
+    transitionLanguage: 'German',
+
+    langBlock: `**Language — read this twice**
+The researcher writes German-language articles for a German-speaking audience (Germany, Austria, Switzerland). Two languages are in play and you must keep them apart:
+- SEARCHING is bilingual. For the core story, and for anything happening in the DACH region, search in German: German spellings and umlauts, German names for places and institutions, German phrasing (Staatsanwaltschaft, Ermittlungen, Unfall, Prozessauftakt). German outlets do not surface for English queries, so an English-only search will make a well-covered German story look unreported. Also run English queries for international angles, celebrity and entertainment stories, and anything the anglophone press covers.
+- WRITING is always English. The entire answer — every heading, every explanation, every angle, every timeline entry, every note — is written in English, no matter what language the input or the sources are in. Never answer in German.
+- QUOTES are the one exception, because the researcher pastes them into a German article. Reproduce a German quote exactly as published, in German, and put a plain English translation immediately after it in parentheses. Format: "Original German wording" (EN: English translation). Never translate a quote silently, never present your own translation as the quote, and never tidy up the original.
+- Keep people, outlets, institutions and place names in their German form (Süddeutsche Zeitung, Staatsanwaltschaft München I, Nordrhein-Westfalen) and add a short English gloss on first mention where an English-speaking editor would need one.`,
+
+    sourceBlock: `**Which outlets to lean on**
+The approved list for this desk carries the German-speaking press — Bild, Spiegel, Focus, Stern, Welt, FAZ, Süddeutsche, Zeit, t-online, n-tv, Tagesschau, Tagesspiegel, RTL, Bunte, Gala, Promipool, the ARD broadcasters (MDR, NDR, SWR, WDR) and the regional titles, plus Austrian and Swiss outlets (Krone, Kurier, Heute, oe24, Blick, 20 Minuten) — alongside the international outlets the American desk already uses.
+For a story that happens in Germany, Austria or Switzerland, the German-language outlets are the primary record: go there first, and only widen out to the international press afterwards. For an international story being written for German readers, the anglophone outlets are the primary record, and the German ones are still worth a search because they show how the story was framed at home — which is often the angle the German audience already has in mind.`,
+
+    blockedNote: `Many outlets on the approved list block the search crawler and are unreachable from this tool — People, US Weekly, Page Six, NY Post, Daily Mail, The Sun, Entertainment Weekly, Vanity Fair, The New York Times, Reuters, USA Today, The Guardian, BBC, Vogue and most state-level US regional papers among them, and some German, Austrian and Swiss publishers block it too. You will never see results from them, and that is expected. It is never a reason to reproduce their reporting from memory, to attribute a fact to them anyway, or to treat the story as unreported. If a German outlet never comes back, do not assume the story is uncovered — try a differently worded German query first, then work with whatever outlets do come back.`,
+
+    amoLangBlock: `The archive is searched in German. The researcher writes German articles, so a German-language AMO article is the only background they can lift without translating it. Keep the language filter on "de" for every search. German AMO content lives mainly on amomama.de (site id 2), but do not filter by site — the language filter is the reliable one.
+Headlines you return must be copied exactly as they appear in the CMS, in German. Everything you write yourself — "why", "use_as", "structure_tip", "notes" — is in English, because the whole tool answers in English.`
+  },
+
+  latam: {
+    id: 'latam',
+    label: 'LatAm',
+    desk: 'the Latin American desk',
+    domains: BASE_DOMAINS.concat(LATAM_EXTRA_DOMAINS),
+    blocked: SEARCH_BLOCKED_DOMAINS,
+    // Two languages of searching means more queries per story.
+    maxSearches: 16,
+    esLanguage: 'es',
+    archiveLabel: 'Spanish',
+    transitionLanguage: 'Spanish',
+
+    langBlock: `**Language — read this twice**
+The researcher writes Spanish-language articles for a Latin American audience. Two languages are in play and you must keep them apart:
+- SEARCHING is bilingual. For the core story, and for anything happening in Latin America or Spain, search in Spanish: Spanish spellings and accents, Spanish names for places and institutions, Spanish phrasing (fiscalía, denuncia, imputado, audiencia, allanamiento, velorio). Spanish-language outlets do not surface for English queries, so an English-only search will make a heavily covered regional story look unreported. Also run English queries for international angles, Hollywood and entertainment stories, and anything the anglophone press covers. A handful of approved outlets are Brazilian — when the story is Brazilian, search those in Portuguese.
+- WRITING is always English. The entire answer — every heading, every explanation, every angle, every timeline entry, every note — is written in English, no matter what language the input or the sources are in. Never answer in Spanish.
+- QUOTES are the one exception, because the researcher pastes them into a Spanish article. Reproduce a Spanish quote exactly as published, in Spanish, accents included, and put a plain English translation immediately after it in parentheses. Format: "Original Spanish wording" (EN: English translation). Never translate a quote silently, never present your own translation as the quote, and never tidy up the original.
+- Keep people, outlets, institutions and place names in their Spanish form (La Nación, Fiscalía General de la Nación, Ciudad de México, Provincia de Buenos Aires) and add a short English gloss on first mention where an English-speaking editor would need one.
+- Spanish varies by country. Match the variety of the country the story is set in — Argentine voseo in an Argentine quote, Mexican usage in a Mexican one — and never rewrite a quote into a different variety.`,
+
+    sourceBlock: `**Which outlets to lean on**
+The approved list for this desk covers the region country by country — Argentina (Infobae, Clarín, La Nación, A24, TN, Ciudad, Caras, Gente, Para Ti, Paparazzi, Pronto, El Trece), Mexico (Milenio, Excélsior, El Financiero, Heraldo de México, Proceso, Publimetro, TVNotas, Quién, Las Estrellas, UnoTV), Colombia, Peru, Ecuador, Paraguay, the Caribbean and Central America (El Tiempo, El Espectador, Semana, Blu Radio, El Comercio, La República, RPP, El Universo, Listín Diario, Diario Libre, Observador, Tiempo, Wapa), Spain (El País, El Mundo, El Español, La Vanguardia, ¡Hola!, Lecturas, Diez Minutos, Marca) and the US Hispanic press (Univision, People en Español, La Opinión, Latin Times, Remezcla) — alongside the international outlets the American desk already uses, and a few Brazilian titles (G1, CNN Brasil, Caras Brasil) for stories that cross into Brazil.
+For a story that happens in the region, the local outlets of that specific country are the primary record: go to the country's own press first — an Argentine story is reported first and best in Buenos Aires, not in Madrid or Miami — and only then widen out. Spanish outlets and the US Hispanic press are useful secondary sources but often reprint the local reporting, so prefer the original. For an international story being written for Latin American readers, the anglophone outlets are the primary record, and the Spanish-language ones still matter because they show the framing the audience already has.`,
+
+    blockedNote: `Many outlets on the approved list block the search crawler and are unreachable from this tool — People, US Weekly, Page Six, NY Post, Daily Mail, The Sun, Entertainment Weekly, Vanity Fair, The New York Times, Reuters, USA Today, The Guardian, BBC, Vogue and most state-level US regional papers among them, and some Spanish-language publishers block it too. You will never see results from them, and that is expected. It is never a reason to reproduce their reporting from memory, to attribute a fact to them anyway, or to treat the story as unreported. If a Latin American outlet never comes back, do not assume the story is uncovered — try a differently worded Spanish query first, then work with whatever outlets do come back.`,
+
+    amoLangBlock: `The archive is searched in Spanish. The researcher writes Spanish articles, so a Spanish-language AMO article is the only background they can lift without translating it. Keep the language filter on "es" for every search, and write your search keywords in Spanish — a Spanish CMS headline will not match an English query. Spanish AMO content lives mainly on amomama.es (site id 19), es.amomama.com (23) and posts.amomama.es (36), but do not filter by site — the language filter is the reliable one.
+Headlines you return must be copied exactly as they appear in the CMS, in Spanish. Everything you write yourself — "why", "use_as", "structure_tip", "notes" — is in English, because the whole tool answers in English.`
+  }
+
+};
+
+// ---------------------------------------------------------------------------
+// Blocked-domain memory. The API tells us which outlets its crawler cannot
+// reach, but only by rejecting the request first. Remembering the answer per
+// locale means that round trip is paid once, not on every run.
+// ---------------------------------------------------------------------------
+function learnedBlocked(id) {
+  try { return JSON.parse(localStorage.getItem('seBlocked:' + id) || '[]'); }
+  catch (e) { return []; }
+}
+function rememberBlocked(id, list) {
+  try {
+    const merged = learnedBlocked(id).concat(list)
+      .filter((d, i, a) => a.indexOf(d) === i).sort();
+    localStorage.setItem('seBlocked:' + id, JSON.stringify(merged));
+  } catch (e) { /* private mode — nothing to remember */ }
 }
 
-const SYSTEM_PROMPT = `You are a research assistant for a digital media team. Your job is to suggest additional sources and ideas that can enrich a primary news article — not to summarize or repeat what the researcher already provided.
+// What actually gets passed to the search tool: approved AND reachable.
+function searchableDomains(L) {
+  const out = L.blocked.concat(learnedBlocked(L.id)).concat(UTILITY_DOMAINS);
+  return L.domains.filter(d => out.indexOf(d) === -1);
+}
+
+function isApprovedHost(host, L) {
+  host = String(host || '').replace(/^www\./, '').toLowerCase();
+  return L.domains.some(d => {
+    d = d.toLowerCase();
+    return host === d || host.endsWith('.' + d);
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Active locale. Persisted so a researcher who only ever works one desk never
+// has to think about the switch again.
+// ---------------------------------------------------------------------------
+let ACTIVE = 'us';
+try {
+  const saved = localStorage.getItem('storyEnricherLocale');
+  if (saved && LOCALES[saved]) ACTIVE = saved;
+} catch (e) { /* private mode */ }
+
+function locale() { return LOCALES[ACTIVE]; }
+
+function setLocale(id) {
+  if (!LOCALES[id] || id === ACTIVE) { paintLocale(); return; }
+  ACTIVE = id;
+  try { localStorage.setItem('storyEnricherLocale', id); } catch (e) {}
+  // A result produced for one desk must never sit under another desk's label.
+  // The input is deliberately left alone: switching desks after pasting an
+  // article should not throw the article away.
+  clearResults();
+  paintLocale();
+}
+
+function paintLocale() {
+  const L = locale();
+  document.querySelectorAll('.loc-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.locale === ACTIVE);
+  });
+  const meta = document.getElementById('localeMeta');
+  if (meta) {
+    meta.innerHTML = '<strong>' + L.label + '</strong> desk · '
+      + searchableDomains(L).length + ' of ' + L.domains.length
+      + ' approved outlets reachable by search · archive searched in ' + L.archiveLabel
+      + ' · answer always in English';
+  }
+  const amoLabel = document.getElementById('amoToggleLabel');
+  if (amoLabel) amoLabel.textContent = 'Search AMO archive (' + L.archiveLabel + ')';
+}
+
+function buildSystemPrompt(L) { return `You are a research assistant for a digital media team. Your job is to suggest additional sources and ideas that can enrich a primary news article — not to summarize or repeat what the researcher already provided.
 When a researcher gives you a news article (as text, a short description, or a URL), do NOT repeat, rephrase, or summarize the information from their input. Treat everything they shared as already known. Your only job is to suggest what is MISSING — new angles, external sources, additional context, and comparable cases they have not mentioned — so they can build a fuller article.
 
 **Absolute rule — zero fabrication**
 Inventing information is strictly forbidden and is the single worst thing you can do in this job. This is not a stylistic preference: an unverified sentence that reads plausibly is worse than an empty section, because a researcher will publish it. You may only state something if a specific article you found in a search says it. You may not infer it, reconstruct it, assume it, or write the version of events that "would normally" happen. If you have no source, you have no sentence — leave it out and say so.
+
+${L.langBlock}
 
 **Research method — mandatory**
 You have a web_search tool. Use it before you write anything, every single time, with no exceptions. Run several searches: the people involved, the specific case or event, then one search per comparable case, timeline event, or fashion detail you intend to cite. Build your answer only from what those searches actually return. You need a real, working article URL for every fact you keep — searching is the only way to get one, so never skip the searches and never write the answer from memory.
 
 The search tool is hard-restricted at the API level to the approved outlets listed below: it is technically incapable of returning a result from any other website. Two consequences follow, and both matter. First, you never need to judge whether a source is allowed — if it came back from a search, it is approved. Second, if a search returns nothing, that does NOT mean you should look elsewhere, work around it, or supply the information yourself; it means no approved outlet has published this, and the honest answer is NOT FOUND. Never name an outlet you did not receive a result from, even one on the list.
 
-Many outlets on the approved list block the search crawler and are unreachable from this tool — People, US Weekly, Page Six, NY Post, Daily Mail, The Sun, Entertainment Weekly, Vanity Fair, The New York Times, Reuters, USA Today, The Guardian, BBC, Vogue and most state-level regional papers among them. You will never see results from them, and that is expected. It is never a reason to reproduce their reporting from memory, to attribute a fact to them anyway, or to treat the story as unreported. Work with whatever outlets do come back.
+${L.sourceBlock}
+
+${L.blockedNote}
 
 Respond with the following structure — always in English:
 ---
@@ -302,9 +572,9 @@ Rules:
 - If the story is recent or beyond your knowledge cutoff, that is exactly what the web_search tool is for: search for it. Never answer such a story from memory. If the searches genuinely return nothing about this specific person or event, say that plainly at the top of the response and mark the sections NOT FOUND — that is the right answer, and it is far more useful to the researcher than a reconstruction.
 - A short, fully sourced answer always beats a long one. Never trade accuracy for completeness.
 - The Celebrity appearance & style intelligence section is optional and should only appear when the story is clearly about a celebrity's looks, outfit, styling, beauty routine, body, or cosmetic procedures. Skip it entirely for political, business, or non-appearance-related stories.
-- Within the Celebrity appearance & style intelligence section, include only the sub-sections that are directly relevant. Do not force sub-sections that don't apply to the story.`;
+- Within the Celebrity appearance & style intelligence section, include only the sub-sections that are directly relevant. Do not force sub-sections that don't apply to the story.`; }
 
-// Site id → domain. Lifted out of AMO_SYSTEM_PROMPT: the model returns the raw
+// Site id → domain. Lifted out of the AMO prompt: the model returns the raw
 // ids and this builds the URLs, which is both cheaper per run and immune to the
 // model mistyping a domain or forgetting a slug-only exception.
 const SITE_DOMAINS = {
@@ -432,9 +702,11 @@ function amoAdminUrl(a) {
   return a.id ? 'https://amooffice.com/en/cms/posts/' + a.id : null;
 }
 
-const AMO_SYSTEM_PROMPT = `You are the AMO archive scout inside an editorial research tool. A researcher is writing a new article. Your job is to search AMO's own CMS (Elasticsearch) and return the previously published AMO articles that can safely be reused as SECONDARY CONTENT (a background section) inside that specific new article.
+function buildAmoPrompt(L) { return `You are the AMO archive scout inside an editorial research tool. A researcher is writing a new article. Your job is to search AMO's own CMS (Elasticsearch) and return the previously published AMO articles that can safely be reused as SECONDARY CONTENT (a background section) inside that specific new article.
 
 You have one tool: the "amo-es" MCP server (Elasticsearch). Index: "posts".
+
+${L.amoLangBlock}
 
 ## What makes a candidate good or bad
 These rules come from a performance analysis of 12 published articles measured by average intext IPP (benchmark: 12.5; fiction average: 26.52). Follow them exactly — they decide what you return.
@@ -449,8 +721,8 @@ These rules come from a performance analysis of 12 published articles measured b
 ## Search procedure
 1. Read the researcher's input and identify: the people involved, the specific case/event, and 2–4 distinctive keywords (full names, case name, location, event name).
 2. Start narrow — headline-level matching:
-{"size": 25, "_source": ["id","public_id","main_headline","title","description","slug","sites","status","language","published_at"], "sort": [{"_score": "desc"}, {"published_at": "desc"}], "query": {"bool": {"filter": [{"term": {"status": 3}}, {"term": {"language": "en"}}], "must": [{"multi_match": {"query": "KEYWORDS", "fields": ["main_headline^4","title^4","slug^3","description^2"], "type": "best_fields"}}]}}}
-3. If that returns fewer than 3 relevant hits, broaden: add "body" to the fields, or drop the language filter, or search the case name alone. Run at most 4 searches total, then answer with what you have.
+{"size": 25, "_source": ["id","public_id","main_headline","title","description","slug","sites","status","language","published_at"], "sort": [{"_score": "desc"}, {"published_at": "desc"}], "query": {"bool": {"filter": [{"term": {"status": 3}}, {"term": {"language": "${L.esLanguage}"}}], "must": [{"multi_match": {"query": "KEYWORDS", "fields": ["main_headline^4","title^4","slug^3","description^2"], "type": "best_fields"}}]}}}
+3. If that returns fewer than 3 relevant hits, broaden in this order: add "body" to the fields, then try the case name or the surname alone, then try the alternative spellings a "${L.esLanguage}" newsroom would use. Only as a last resort drop the language filter — and if a candidate that comes back is not in "${L.esLanguage}", say so at the start of its "why" as [needs translating] and set its "language" field, because the researcher would have to translate it before using it. Run at most 4 searches total, then answer with what you have.
 4. Discard: the researcher's own article if it is already in the index; anything with status other than 3; anything that is neither the same case/event nor at least the same person; near-duplicate republications of the same piece (keep the best one).
 5. Rank remaining candidates: same case/event first (most recent and most detailed first), then same-person-different-storyline.
 6. Return at most 6 candidates. Quality over quantity — returning 2 strong ones is better than padding with weak ones.
@@ -470,11 +742,12 @@ Reply with ONE valid JSON object and nothing else — no prose before or after, 
       "published_at": "2026-05-14",
       "public_id": 542936,
       "slug": "exact-slug-from-the-cms",
+      "language": "${L.esLanguage}",
       "site_id": 24,
       "tier": "same_event",
       "why": "one sentence — which part of the same case or event this article covers",
       "use_as": "one or two sentences — what specifically to lift from it as the background section, naming the story elements worth keeping (timestamps, quotes, the turn)",
-      "transition": "a ready-to-paste transition line in the article's voice, e.g. 'As we previously reported, ...'",
+      "transition": "a ready-to-paste transition line in the article's voice, written in ${L.transitionLanguage} because it goes straight into the finished article — the English equivalent is 'As we previously reported, ...'",
       "repeat_risk": "a quote or fact in this article that already appears in the researcher's input — or null if there is no overlap"
     }
   ],
@@ -484,7 +757,8 @@ Reply with ONE valid JSON object and nothing else — no prose before or after, 
 
 "tier" must be exactly "same_event" or "same_person_other_story".
 For "same_person_other_story" candidates, "why" must state plainly that the storyline differs and that the headline has to cover both angles for it to be safe to use.
-Never invent an article, an id, a headline, or a URL. Everything must come from an actual search result. If the search finds nothing usable, return an empty "articles" array and fill in "notes".`;
+Everything you write yourself is in English — the only exceptions are the "headline", which is copied verbatim from the CMS, and "transition", which is written in ${L.transitionLanguage} so it can be pasted straight into the article.
+Never invent an article, an id, a headline, or a URL. Everything must come from an actual search result. If the search finds nothing usable, return an empty "articles" array and fill in "notes".`; }
 
 
 
@@ -555,19 +829,25 @@ function runResearch() {
   const output = document.getElementById('output');
   const useAmo = document.getElementById('amoToggle').checked;
 
+  // Frozen for the whole run: switching desks mid-request must not relabel or
+  // re-filter a result that was produced for the other one.
+  const L = locale();
+
   btn.disabled = true;
   output.style.display = 'none';
   document.getElementById('resultContent').innerHTML = '';
   document.getElementById('amoContent').innerHTML = '';
-  status.innerHTML = 'Searching the web <span class="dot"></span><span class="dot"></span><span class="dot"></span>';
+  status.innerHTML = 'Searching the web in ' + (L.id === 'us' ? 'English' : L.archiveLabel + ' and English')
+    + ' <span class="dot"></span><span class="dot"></span><span class="dot"></span>';
 
   // Both calls run in parallel — the archive lookup is slower, so it fills in after.
-  const enrich = runEnrichment(input, status, output, btn);
-  if (useAmo) runAmoLookup(input, output);
+  const enrich = runEnrichment(input, status, output, btn, L);
+  if (useAmo) runAmoLookup(input, output, L);
   return enrich;
 }
 
-// Runs the search restricted to SEARCHABLE_DOMAINS. Some publishers block the
+// Runs the search restricted to the active desk's searchableDomains(). Some
+// publishers block the
 // search crawler, and the API rejects the whole request with a 400 that names
 // them — so if that happens, read the names out of the error, drop them, and try
 // again. That keeps working if the blocked set changes on Anthropic's side.
@@ -581,11 +861,11 @@ function parseBlockedDomains(message) {
   return found;
 }
 
-async function callWithSearch(base) {
-  let domains = SEARCHABLE_DOMAINS.slice();
+async function callWithSearch(base, L) {
+  let domains = searchableDomains(L);
 
   for (let attempt = 1; attempt <= 4; attempt++) {
-    const tool = { type: "web_search_20250305", name: "web_search", max_uses: 12 };
+    const tool = { type: "web_search_20250305", name: "web_search", max_uses: L.maxSearches };
     if (domains.length) tool.allowed_domains = domains;
     try {
       const data = await callApi(Object.assign({}, base, { tools: [tool] }));
@@ -595,8 +875,11 @@ async function callWithSearch(base) {
       const newlyBlocked = parseBlockedDomains(e.message);
       if (newlyBlocked.length) {
         console.warn('[story-enricher] these approved outlets block the search crawler and were dropped: '
-          + newlyBlocked.join(', ') + ' — add them to SEARCH_BLOCKED_DOMAINS to skip this round trip next time');
+          + newlyBlocked.join(', ') + ' — remembered for the ' + L.label
+          + ' desk; paste them into SEARCH_BLOCKED_DOMAINS to make it permanent');
+        rememberBlocked(L.id, newlyBlocked);
         domains = domains.filter(d => newlyBlocked.indexOf(d) === -1);
+        paintLocale();
         continue;
       }
       console.warn('[story-enricher] search failed: ' + e.message);
@@ -606,14 +889,14 @@ async function callWithSearch(base) {
   throw new Error('The search could not be run against the approved source list. Nothing was returned rather than risk an unsourced answer.');
 }
 
-async function runEnrichment(input, status, output, btn) {
+async function runEnrichment(input, status, output, btn, L) {
   try {
     const data = await callWithSearch({
       model: MODEL,
       max_tokens: 8000,
-      system: cached(SYSTEM_PROMPT),
+      system: cached(buildSystemPrompt(L)),
       messages: [{ role: "user", content: input }]
-    });
+    }, L);
 
     const box = document.getElementById('resultContent');
     let html = '';
@@ -621,7 +904,7 @@ async function runEnrichment(input, status, output, btn) {
       html += '<div class="warn-line">⚠ response was cut off by the length limit — some sections may be incomplete</div>';
     }
     box.innerHTML = html + renderContent(textOf(data));
-    filterOutput(box, citationsOf(data));
+    filterOutput(box, citationsOf(data), L);
 
     output.style.display = 'block';
     status.innerHTML = '';
@@ -655,6 +938,7 @@ const SOCIAL_POST_PATTERNS = {
   "tiktok.com":    /\/video\//i,
   "facebook.com":  /\/(posts|videos|photo|permalink|reel|watch|story\.php)/i,
   "youtube.com":   /\/(watch|shorts|live)/i,
+  "dailymotion.com": /\/video\//i,
   "youtu.be":      /\/.+/
 };
 
@@ -670,12 +954,12 @@ function socialKind(u) {
 
 // Does this link meet the source standard? Anything that fails is dropped
 // silently along with the sentence that leaned on it.
-function linkPasses(href, cites) {
+function linkPasses(href, cites, L) {
   let u;
   try { u = new URL(href); } catch (e) { return false; }
 
   // Must be one of the approved outlets.
-  if (!isApprovedHost(u.host)) return false;
+  if (!isApprovedHost(u.host, L)) return false;
 
   const social = socialKind(u);
   // Social is allowed only as a link to the actual post, never an account page.
@@ -699,7 +983,7 @@ function linkPasses(href, cites) {
 // standard: no source, a source off the approved list, a homepage link, a
 // social profile link, or a URL that never came back from a search. Sections
 // left with nothing are removed entirely. No flags, no warnings in the output.
-function filterOutput(container, cites) {
+function filterOutput(container, cites, L) {
   let dropped = 0;
 
   container.querySelectorAll('.block').forEach(block => {
@@ -722,7 +1006,7 @@ function filterOutput(container, cites) {
         if (needsSource) { dropped++; return false; }        // a claim with no source
         return true;                                         // summary / angles: no claim of fact
       }
-      if (hrefs.some(h => !linkPasses(h, cites))) { dropped++; return false; }
+      if (hrefs.some(h => !linkPasses(h, cites, L))) { dropped++; return false; }
       return true;
     });
 
@@ -739,7 +1023,7 @@ function filterOutput(container, cites) {
   }
 }
 
-async function runAmoLookup(input, output) {
+async function runAmoLookup(input, output, L) {
   const box = document.getElementById('amoContent');
   output.style.display = 'block';
   box.innerHTML = '<div class="block"><div class="block-title">🗂 AMO archive — background you already own</div>'
@@ -750,7 +1034,7 @@ async function runAmoLookup(input, output) {
       use_amo_es: true,
       model: AMO_MODEL,
       max_tokens: 6000,
-      system: cached(AMO_SYSTEM_PROMPT),
+      system: cached(buildAmoPrompt(L)),
       messages: [{ role: "user", content: "Primary story the researcher is working on:\n\n" + input }]
     });
     const parsed = extractJson(textOf(data));
@@ -804,7 +1088,8 @@ function renderAmo(data) {
     const webUrl = a.web_url || amoWebUrl(a);
     const adminUrl = a.admin_url || amoAdminUrl(a);
     const siteName = a.site || SITE_DOMAINS[a.site_id] || null;
-    const meta = [a.published_at, siteName, a.id ? 'ID ' + a.id : null].filter(Boolean).map(escapeHtml).join(' · ');
+    const lang = a.language ? String(a.language).toUpperCase() : null;
+    const meta = [a.published_at, siteName, lang, a.id ? 'ID ' + a.id : null].filter(Boolean).map(escapeHtml).join(' · ');
     if (meta) html += '<div class="amo-meta">' + meta + '</div>';
 
     if (a.why) html += '<div class="amo-line"><span class="k">Why</span>' + escapeHtml(a.why) + '</div>';
@@ -862,18 +1147,24 @@ function copyResult() {
   });
 }
 
-function resetTool() {
-  document.getElementById('inputText').value = '';
+function clearResults() {
   document.getElementById('output').style.display = 'none';
   document.getElementById('resultContent').innerHTML = '';
   document.getElementById('amoContent').innerHTML = '';
   document.getElementById('status').innerHTML = '';
+}
+
+function resetTool() {
+  document.getElementById('inputText').value = '';
+  clearResults();
   document.getElementById('inputText').focus();
 }
 
 document.getElementById('inputText').addEventListener('keydown', e => {
   if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) runResearch();
 });
+
+paintLocale();
 </script>
 </body>
 </html>
