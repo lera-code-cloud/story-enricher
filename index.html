@@ -87,8 +87,6 @@
   .loc-btn:hover { color: #9a8f85; }
   .loc-btn.active { background: rgba(200,184,154,0.14); color: #c8b89a; }
   .loc-btn:disabled { opacity: .4; cursor: not-allowed; }
-  .locale-meta { font-size: 11px; color: #4a4540; letter-spacing: .02em; margin-top: 10px; }
-  .locale-meta strong { color: #6b6560; font-weight: 500; }
   @media (max-width: 620px) {
     header { padding: 14px 18px; flex-wrap: wrap; gap: 12px; }
     header span { display: none; }
@@ -126,7 +124,6 @@
       </label>
       <div id="status"></div>
     </div>
-    <div class="locale-meta" id="localeMeta"></div>
   </div>
 
   <div id="output">
@@ -480,13 +477,6 @@ function paintLocale() {
   document.querySelectorAll('.loc-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.locale === ACTIVE);
   });
-  const meta = document.getElementById('localeMeta');
-  if (meta) {
-    meta.innerHTML = '<strong>' + L.label + '</strong> desk · '
-      + searchableDomains(L).length + ' of ' + L.domains.length
-      + ' approved outlets reachable by search · archive searched in ' + L.archiveLabel
-      + ' · answer always in English';
-  }
   const amoLabel = document.getElementById('amoToggleLabel');
   if (amoLabel) amoLabel.textContent = 'Search AMO archive (' + L.archiveLabel + ')';
 }
@@ -879,7 +869,6 @@ async function callWithSearch(base, L) {
           + ' desk; paste them into SEARCH_BLOCKED_DOMAINS to make it permanent');
         rememberBlocked(L.id, newlyBlocked);
         domains = domains.filter(d => newlyBlocked.indexOf(d) === -1);
-        paintLocale();
         continue;
       }
       console.warn('[story-enricher] search failed: ' + e.message);
