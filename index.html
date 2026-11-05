@@ -76,6 +76,12 @@
   .amo-badge { flex-shrink: 0; font-size: 10px; text-transform: uppercase; letter-spacing: .08em; padding: 3px 9px; border-radius: 6px; white-space: nowrap; }
   .badge-same { background: rgba(107,154,122,0.14); color: #7cae8c; }
   .badge-other { background: rgba(200,149,90,0.14); color: #c8955a; }
+  .badge-plot { background: rgba(200,184,154,0.14); color: #c8b89a; }
+  .badge-place { background: rgba(176,149,154,0.14); color: #b8a0a5; }
+  .badge-inst { background: rgba(168,163,157,0.14); color: #a8a39d; }
+  .amo-item.tier-plot { border-left: 2px solid #c8b89a; }
+  .amo-item.tier-place { border-left: 2px solid #b8a0a5; }
+  .amo-item.tier-inst { border-left: 2px solid #a8a39d; }
   .amo-meta { font-size: 12px; color: #6b6560; margin-bottom: 12px; }
   .amo-line { font-size: 14px; line-height: 1.65; color: #d4ccc4; margin-bottom: 7px; }
   .amo-line .k { color: #6b6560; font-size: 11px; text-transform: uppercase; letter-spacing: .07em; margin-right: 7px; }
@@ -696,11 +702,25 @@ function amoAdminUrl(a) {
   return a.id ? 'https://amooffice.com/en/cms/posts/' + a.id : null;
 }
 
+// AMO concepts that are fiction or fiction-like and must never come back as
+// background: Jokes/Stories (11), Comedy (13), Fiction (Viral) (24),
+// Test Fiction (Viral) (28), Reddit-Inspired (Viral) (29), Reddit-Inspired
+// (Fiction) (30), Test fiction (31), Fiction (Fiction) (32).
+const FICTION_CONCEPT_IDS = [11, 13, 24, 28, 29, 30, 31, 32];
+// Search budget for one archive lookup. Ordinary-people stories run extra
+// plot / location / institution searches, so this is higher than it used to be.
+const AMO_MAX_SEARCHES = 7;
+
 function buildAmoPrompt(L) { return `You are the AMO archive scout inside an editorial research tool. A researcher is writing a new article. Your job is to search AMO's own CMS (Elasticsearch) and return the previously published AMO articles that can safely be reused as SECONDARY CONTENT (a background section) inside that specific new article.
 
 You have one tool: the "amo-es" MCP server (Elasticsearch). Index: "posts".
 
 ${L.amoLangBlock}
+
+## Never return fiction
+AMO also publishes fiction and fiction-like formats. They are never background for a news article, even when the plot matches perfectly — and plot searches will surface them first, because their plots are built to look like real stories. Every single query you run must carry this exclusion inside its "bool":
+"must_not": [{"terms": {"concept_id": [${FICTION_CONCEPT_IDS.join(',')}]}}]
+(Those are Fiction, Test fiction, Reddit-Inspired Viral and Fiction, Jokes/Stories and Comedy.) If a candidate still reads like an invented story, discard it.
 
 ## What makes a candidate good or bad
 These rules come from a performance analysis of 12 published articles measured by average intext IPP (benchmark: 12.5; fiction average: 26.52). Follow them exactly — they decide what you return.
@@ -710,16 +730,47 @@ These rules come from a performance analysis of 12 published articles measured b
 3. IT MUST READ LIKE A STORY. Prefer candidates rich in timestamps, direct quotes, and rising tension over flat recaps or list-style roundups.
 4. LENGTH IS IRRELEVANT. Background can be 8% or 70% of the finished article — the top scorer in the analysis was 70% background. Never filter or rank by word count.
 5. REUSE IS FINE. The same background article can feed several different pieces about the same case without hurting any of them.
-6. The shift into background must always be labelled in the finished article ("As we previously reported…"), so supply a ready transition line for every candidate.
+6. The shift into background must always be labelled in the finished article, so supply a ready transition line for every candidate.
 
-## Search procedure
-1. Read the researcher's input and identify: the people involved, the specific case/event, and 2–4 distinctive keywords (full names, case name, location, event name).
-2. Start narrow — headline-level matching:
-{"size": 25, "_source": ["id","public_id","main_headline","title","description","slug","sites","status","language","published_at"], "sort": [{"_score": "desc"}, {"published_at": "desc"}], "query": {"bool": {"filter": [{"term": {"status": 3}}, {"term": {"language": "${L.esLanguage}"}}], "must": [{"multi_match": {"query": "KEYWORDS", "fields": ["main_headline^4","title^4","slug^3","description^2"], "type": "best_fields"}}]}}}
-3. If that returns fewer than 3 relevant hits, broaden in this order: add "body" to the fields, then try the case name or the surname alone, then try the alternative spellings a "${L.esLanguage}" newsroom would use. Only as a last resort drop the language filter — and if a candidate that comes back is not in "${L.esLanguage}", say so at the start of its "why" as [needs translating] and set its "language" field, because the researcher would have to translate it before using it. Run at most 4 searches total, then answer with what you have.
-4. Discard: the researcher's own article if it is already in the index; anything with status other than 3; anything that is neither the same case/event nor at least the same person; near-duplicate republications of the same piece (keep the best one).
-5. Rank remaining candidates: same case/event first (most recent and most detailed first), then same-person-different-storyline.
-6. Return at most 6 candidates. Quality over quantity — returning 2 strong ones is better than padding with weak ones.
+## Step 1 — classify the story
+Decide which kind of story the input is and report it as "story_type":
+- "celebrity": the people at the centre are famous (celebrities, public figures, royals, influencers with a known name). AMO has probably written about them before.
+- "ordinary_people": the people at the centre are private individuals — a viral moment, a human-interest story, a crime, an accident, a tragedy, a family conflict. AMO has almost certainly never written about these exact people, so name searches will usually come back empty.
+
+## Step 2 — search for the same case (both story types)
+Identify the people involved, the specific case/event, and 2–4 distinctive keywords (full names, case name, location, event name). Start with headline-level matching:
+{"size": 25, "_source": ["id","public_id","main_headline","title","description","slug","sites","status","language","published_at","concept_id"], "sort": [{"_score": "desc"}, {"published_at": "desc"}], "query": {"bool": {"filter": [{"term": {"status": 3}}, {"term": {"language": "${L.esLanguage}"}}], "must_not": [{"terms": {"concept_id": [${FICTION_CONCEPT_IDS.join(',')}]}}], "must": [{"multi_match": {"query": "KEYWORDS", "fields": ["main_headline^4","title^4","slug^3","description^2"], "type": "best_fields"}}]}}}
+If that returns fewer than 3 relevant hits, broaden: add "body" to the fields, then try the case name or the surname alone, then the alternative spellings a "${L.esLanguage}" newsroom would use. For "ordinary_people" stories, one name search is enough — if it finds nothing, move on to Step 3 instead of spending more searches on names.
+
+## Step 3 — related-case searches (ONLY for "ordinary_people" stories)
+Skip this step entirely for "celebrity" stories. For "ordinary_people" stories, run these searches. They find a DIFFERENT case that the new article can set alongside its own story.
+
+A. SIMILAR PLOT. Write a plot skeleton: one or two sentences describing what happened with every name removed, in ${L.archiveLabel}, using the words a ${L.archiveLabel}-language newsroom would put in a headline and body (for example: "a stepmother ruined her stepdaughter's wedding dress and the bride found out at the ceremony"). Search with it like this:
+{"size": 15, "_source": [ ...same fields as Step 2... ], "query": {"bool": {"filter": [{"term": {"status": 3}}, {"term": {"language": "${L.esLanguage}"}}], "must_not": [{"terms": {"concept_id": [${FICTION_CONCEPT_IDS.join(',')}]}}], "must": [{"more_like_this": {"fields": ["main_headline","title","description","body"], "like": "PLOT SKELETON", "min_term_freq": 1, "min_doc_freq": 2, "max_query_terms": 25, "minimum_should_match": "30%"}}]}}}
+If that returns nothing usable, run one multi_match over "main_headline^3","title^3","description^2","body" with the 3–4 most distinctive plot words.
+A match must share the core of the plot — the same kind of conflict, betrayal, act or twist — not just the same setting or vocabulary. "Both involve a wedding" is not a match; "both involve a family member sabotaging the bride" is.
+
+B. SAME LOCATION. Only if the input names a specific place (town, city, county, neighbourhood, landmark) and the story is an incident in that place — a crime, a killing, a disappearance, an accident, a fire, a disaster. Search the place name as a phrase in "body" and "description" ("match_phrase"), together with a "should" clause of event-type words for the same kind of incident. For a small town the place alone is enough; for a large city (millions of people) the event-type words are required, otherwise you just get every story that mentions the city. Prefer the most recent matches. A match must be an earlier incident in the same place — not a story that only mentions the place in passing.
+
+C. SAME INSTITUTION OR BRAND. Only if the story happens at, or because of, a specific named organisation — a school, a hospital, a police department, an airline, a cruise line, a theme park, a retail chain, a restaurant chain. Search the organisation's name as a phrase together with words for the same kind of incident. A match must be an earlier incident involving that same organisation.
+
+## Step 4 — filter and rank
+Run at most ${AMO_MAX_SEARCHES} searches in total across all steps, then answer with what you have.
+Discard: the researcher's own article if it is already in the index; anything with status other than 3; anything with a fiction concept_id; near-duplicate republications of the same piece (keep the best one); anything that does not fit one of the tiers below.
+Only as a last resort drop the language filter — and if a candidate that comes back is not in "${L.esLanguage}", say so at the start of its "why" as [needs translating] and set its "language" field.
+
+Rank:
+1. "same_event" — the same case or event. Always first, most recent and most detailed first.
+2. "same_person_other_story" — the same person, a different storyline.
+3. "same_location", "same_institution", "similar_plot" — a different case. Rank these against each other by how strong the link is: a tragedy in the same small town usually beats a loosely similar plot; a near-identical plot usually beats a passing location match.
+Return at most 6 candidates in total, and at most 4 from the related-case tiers. Quality over quantity — returning 2 strong ones is better than padding with weak ones.
+
+## Related cases are a different case — say so, every time
+For "similar_plot", "same_location" and "same_institution" candidates:
+- "why" must open by naming the link plainly (same plot / same town / same airline) and state that it is a different case involving different people.
+- "use_as" must describe the article as a comparison or precedent, never as background to the new story.
+- "transition" must make it unmistakable to the reader that this is a separate case. The English equivalents are "This isn't the first time...", "Just last year, the same town...", "It's not the first incident aboard...". Never write a transition that suggests the people in the two stories are connected, that one case caused or explains the other, or that the earlier case is part of the same investigation.
+- Never move a fact, quote or detail from the earlier case into the new one.
 
 ## Identifying each candidate
 For every candidate return its "id", "public_id", "slug", and "site_id" — where site_id is the FIRST id in the "sites" array. Do not build URLs; the tool constructs them from these four fields.
@@ -728,7 +779,9 @@ For every candidate return its "id", "public_id", "slug", and "site_id" — wher
 Reply with ONE valid JSON object and nothing else — no prose before or after, no markdown code fences.
 
 {
+  "story_type": "celebrity or ordinary_people",
   "topic": "the specific case/event you searched for, one short line",
+  "plot_skeleton": "for ordinary_people stories: the nameless plot skeleton you searched with, in English. Otherwise null.",
   "articles": [
     {
       "id": 542936,
@@ -739,17 +792,17 @@ Reply with ONE valid JSON object and nothing else — no prose before or after, 
       "language": "${L.esLanguage}",
       "site_id": 24,
       "tier": "same_event",
-      "why": "one sentence — which part of the same case or event this article covers",
-      "use_as": "one or two sentences — what specifically to lift from it as the background section, naming the story elements worth keeping (timestamps, quotes, the turn)",
-      "transition": "a ready-to-paste transition line in the article's voice, written in ${L.transitionLanguage} because it goes straight into the finished article — the English equivalent is 'As we previously reported, ...'",
+      "why": "one sentence — which part of the same case or event this article covers, or for a related case, what links it and that it is a different case",
+      "use_as": "one or two sentences — what specifically to lift from it, naming the story elements worth keeping (timestamps, quotes, the turn)",
+      "transition": "a ready-to-paste transition line in the article's voice, written in ${L.transitionLanguage} because it goes straight into the finished article",
       "repeat_risk": "a quote or fact in this article that already appears in the researcher's input — or null if there is no overlap"
     }
   ],
   "structure_tip": "one line of advice for this specific story, only if it applies: covering several angles at once and saying so in the headline, or holding the biggest reveal until later once the reader is invested. Otherwise null.",
-  "notes": "only if you found nothing on the same case/event — say so plainly and state what you searched. Otherwise null."
+  "notes": "only if you found nothing usable — say so plainly and state what you searched (names, plot, place, institution). Otherwise null."
 }
 
-"tier" must be exactly "same_event" or "same_person_other_story".
+"tier" must be exactly one of "same_event", "same_person_other_story", "similar_plot", "same_location", "same_institution".
 For "same_person_other_story" candidates, "why" must state plainly that the storyline differs and that the headline has to cover both angles for it to be safe to use.
 Everything you write yourself is in English — the only exceptions are the "headline", which is copied verbatim from the CMS, and "transition", which is written in ${L.transitionLanguage} so it can be pasted straight into the article.
 Never invent an article, an id, a headline, or a URL. Everything must come from an actual search result. If the search finds nothing usable, return an empty "articles" array and fill in "notes".`; }
@@ -1057,26 +1110,37 @@ function escapeHtml(s) {
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+// How each archive tier is labelled and coloured in the results.
+const AMO_TIERS = {
+  same_event:              { label: 'Same story',               item: 'tier-same',  badge: 'badge-same' },
+  same_person_other_story: { label: 'Same person · other story', item: 'tier-other', badge: 'badge-other' },
+  similar_plot:            { label: 'Similar plot',              item: 'tier-plot',  badge: 'badge-plot' },
+  same_location:           { label: 'Same place',                item: 'tier-place', badge: 'badge-place' },
+  same_institution:        { label: 'Same institution',          item: 'tier-inst',  badge: 'badge-inst' }
+};
+
 function renderAmo(data) {
   let html = '<div class="block"><div class="block-title">🗂 AMO archive — background you already own</div>';
 
   if (data.topic) {
     html += '<div class="amo-topic">Searched for: <strong>' + escapeHtml(data.topic) + '</strong></div>';
   }
+  if (data.plot_skeleton) {
+    html += '<div class="amo-topic">Plot searched: <strong>' + escapeHtml(data.plot_skeleton) + '</strong></div>';
+  }
 
   const items = Array.isArray(data.articles) ? data.articles : [];
 
   if (!items.length) {
-    html += '<div class="amo-empty">' + escapeHtml(data.notes || 'No AMO articles on this case were found. Write the background from external sources instead.') + '</div>';
+    html += '<div class="amo-empty">' + escapeHtml(data.notes || 'No AMO articles on this case or related cases were found. Write the background from external sources instead.') + '</div>';
     return html + '</div>';
   }
 
   items.forEach(a => {
-    const sameEvent = a.tier !== 'same_person_other_story';
-    html += '<div class="amo-item ' + (sameEvent ? 'tier-same' : 'tier-other') + '">';
+    const t = AMO_TIERS[a.tier] || AMO_TIERS.same_event;
+    html += '<div class="amo-item ' + t.item + '">';
     html += '<div class="amo-head"><div class="amo-headline">' + escapeHtml(a.headline || 'Untitled') + '</div>'
-      + '<div class="amo-badge ' + (sameEvent ? 'badge-same' : 'badge-other') + '">'
-      + (sameEvent ? 'Same story' : 'Same person · other story') + '</div></div>';
+      + '<div class="amo-badge ' + t.badge + '">' + t.label + '</div></div>';
 
     const webUrl = a.web_url || amoWebUrl(a);
     const adminUrl = a.admin_url || amoAdminUrl(a);
